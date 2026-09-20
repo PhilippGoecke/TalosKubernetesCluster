@@ -29,11 +29,11 @@ echo "🚀 Starting Talos Cluster Bootstrap for: ${CLUSTER_NAME}"
 if [ ! -f "${CONFIG_DIR}/secrets.yaml" ]; then
     echo "📦 Generating base secrets and machine configurations..."
     talosctl gen secrets --output-file "${CONFIG_DIR}/secrets.yaml" --talos-version "$TALOS_VERSION"
-    echo "ℹ️ Secrets generated."
+    echo "✅ Secrets generated successfully."
     talosctl gen config "${CLUSTER_NAME}" "https://${CONTROL_PLANE_VIP}:6443" \
         --output-dir "${CONFIG_DIR}" \
         --with-secrets "${CONFIG_DIR}/secrets.yaml"
-    echo "ℹ️ Base configuration generated."
+    echo "✅ Base configuration generated successfully."
 else
     echo "ℹ️ Base configurations already exist. Skipping generation."
 fi
@@ -55,11 +55,11 @@ for NODE in "${NODES[@]}"; do
             FIRST_CP_IP="${IP}"
         fi
 
-        echo " Apply control plane configuration"
+        echo "🛠️ Applying control plane configuration..."
         talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/controlplane.yaml"
 
     elif [ "${ROLE}" == "worker" ]; then
-        echo " Apply worker configuration"
+        echo "🛠️ Applying worker configuration..."
         talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/worker.yaml"
     else
         echo "❌ Unknown role '${ROLE}' for node ${IP}. Skipping."
@@ -74,11 +74,25 @@ sleep 30
 
 echo "⚡ Initializing the Kubernetes cluster via ${FIRST_CP_IP}..."
 # Configure local talosctl to point to the first controlplane node
+if [ -z "${FIRST_CP_IP}" ]; then
+    echo "❌ No control plane node was configured; cannot bootstrap the cluster." >&2
+    exit 1
+fi
+
+echo "🔗 Configuring talosctl to use control-plane endpoint: ${FIRST_CP_IP}"
 talosctl config endpoint "${FIRST_CP_IP}" --talosconfig "${CONFIG_DIR}/talosconfig"
+echo "🖥️ Selecting ${FIRST_CP_IP} as the active Talos node"
 talosctl config node "${FIRST_CP_IP}" --talosconfig "${CONFIG_DIR}/talosconfig"
 
-# Trigger the one-time bootstrap
-talosctl bootstrap --talosconfig "${CONFIG_DIR}/talosconfig" --nodes "${FIRST_CP_IP}"
+# Trigger the one-time bootstrap against the selected control-plane endpoint.
+echo "🚀 Sending the one-time bootstrap request to ${FIRST_CP_IP}..."
+echo "   This initializes the Talos control plane and creates the Kubernetes datastore."
+echo "   The command may take a moment while the node initializes."
+talosctl bootstrap \
+    --talosconfig "${CONFIG_DIR}/talosconfig" \
+    --endpoints "${FIRST_CP_IP}" \
+    --nodes "${FIRST_CP_IP}"
+echo "✅ Bootstrap request completed successfully for ${FIRST_CP_IP}."
 
 # ==========================================
 # 4. FETCH KUBECONFIG
