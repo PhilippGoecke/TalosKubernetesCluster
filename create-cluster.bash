@@ -117,7 +117,10 @@ fi
 # 3. BOOTSTRAP THE CLUSTER
 # ==========================================
 log "⏳ Waiting for the control plane node to become ready before bootstrapping..."
-until talosctl get machinestatus --insecure --nodes "${FIRST_CP_IP}" >/dev/null 2>&1; do
+until talosctl get machinestatus \
+    --talosconfig "${CONFIG_DIR}/talosconfig" \
+    --endpoints "${FIRST_CP_IP}" \
+    --nodes "${FIRST_CP_IP}" >/dev/null 2>&1; do
     log "   ${FIRST_CP_IP} is not ready yet; checking again..."
     sleep 2
 done
