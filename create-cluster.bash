@@ -91,6 +91,13 @@ for NODE in "${NODES[@]}"; do
 
     log "🔧 Processing node ${IP} as a ${ROLE}..."
 
+    log "⏳ Waiting for ${IP} to become ready before applying configuration..."
+    until talosctl get machinestatus --insecure --nodes "${IP}" >/dev/null 2>&1; do
+        log "   ${IP} is not ready yet; checking again..."
+        sleep 2
+    done
+    log "✅ Node ${IP} is ready."
+
     if [[ "${ROLE}" == "controlplane" ]]; then
         log "🛠️ Applying control plane configuration..."
         talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/controlplane.yaml"
