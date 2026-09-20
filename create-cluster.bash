@@ -12,6 +12,7 @@ CLUSTER_NAME="production-cluster"
 TALOS_VERSION="v1.14.1" # Replace with your preferred Talos version
 KUBERNETES_VERSION="v1.36.1" # Replace with your preferred Kubernetes version
 CONTROL_PLANE_VIP="192.168.168.212" # Shared Virtual IP for the Control Plane API
+WAIT_TIMEOUT_SECONDS=600 # Maximum time to wait for a node to become ready
 
 # Define nodes using an array format: "IP:ROLE"
 # Roles must be either "controlplane" or "worker"
@@ -94,7 +95,11 @@ for NODE in "${NODES[@]}"; do
     log "🔧 Processing node ${IP} as a ${ROLE}..."
 
     log "⏳ Waiting for ${IP} to become ready before applying configuration..."
-    until talosctl get machinestatus --insecure --nodes "${IP}" >/dev/null 2>&1; do
+    WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+    while ! talosctl get machinestatus --insecure --nodes "${IP}" >/dev/null 2>&1; do
+        if (( SECONDS >= WAIT_DEADLINE )); then
+            fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${IP} to become ready."
+        fi
         log "   ${IP} is not ready yet; checking again..."
         sleep 2
     done
@@ -117,10 +122,14 @@ fi
 # 3. BOOTSTRAP THE CLUSTER
 # ==========================================
 log "⏳ Waiting for the control plane node to become ready before bootstrapping..."
-until talosctl get machinestatus \
+WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+while ! talosctl get machinestatus \
     --talosconfig "${CONFIG_DIR}/talosconfig" \
     --endpoints "${FIRST_CP_IP}" \
     --nodes "${FIRST_CP_IP}" >/dev/null 2>&1; do
+    if (( SECONDS >= WAIT_DEADLINE )); then
+        fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${FIRST_CP_IP} to become ready."
+    fi
     log "   ${FIRST_CP_IP} is not ready yet; checking again..."
     sleep 2
 done
