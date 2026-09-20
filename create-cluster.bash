@@ -28,7 +28,7 @@ log() {
 }
 
 fail() {
-    printf 'ERROR: %s\n' "$*" >&2
+    printf '❌ ERROR: %s\n' "$*" >&2
     exit 1
 }
 
@@ -158,7 +158,7 @@ talosctl health \
 log "🔑 Fetching the kubeconfig..."
 talosctl kubeconfig "${CONFIG_DIR}/kubeconfig" --talosconfig "${CONFIG_DIR}/talosconfig" --nodes "${FIRST_CP_IP}"
 
-log "✅ Success! Your Talos cluster '${CLUSTER_NAME}' is bootstrapping."
+log "🎉 Success! Your Talos cluster '${CLUSTER_NAME}' is bootstrapping."
 log "📂 Secrets and configurations saved to: ${CONFIG_DIR}"
 log "💡 To interact with your cluster, run:"
 log " export KUBECONFIG=${CONFIG_DIR}/kubeconfig"
