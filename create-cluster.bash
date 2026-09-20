@@ -69,8 +69,12 @@ done
 # ==========================================
 # 3. BOOTSTRAP THE CLUSTER
 # ==========================================
-echo "⏳ Waiting 30 seconds for control plane nodes to initialize before bootstrapping..."
-sleep 30
+echo "⏳ Waiting for the control plane node to become ready before bootstrapping..."
+until talosctl get machinestatus --insecure --nodes "${FIRST_CP_IP}" >/dev/null 2>&1; do
+    echo "   ${FIRST_CP_IP} is not ready yet; checking again..."
+    sleep 2
+done
+echo "✅ Control plane node ${FIRST_CP_IP} is ready."
 
 echo "⚡ Initializing the Kubernetes cluster via ${FIRST_CP_IP}..."
 # Configure local talosctl to point to the first controlplane node
@@ -97,8 +101,12 @@ echo "✅ Bootstrap request completed successfully for ${FIRST_CP_IP}."
 # ==========================================
 # 4. FETCH KUBECONFIG
 # ==========================================
-echo "⏳ Waiting 60 seconds for Kubernetes API to come online..."
-sleep 60
+echo "⏳ Waiting for the Kubernetes API to become healthy..."
+talosctl health \
+    --talosconfig "${CONFIG_DIR}/talosconfig" \
+    --endpoints "${FIRST_CP_IP}" \
+    --nodes "${FIRST_CP_IP}" \
+    --wait-timeout 10m
 
 echo "🔑 Fetching the kubeconfig..."
 talosctl kubeconfig "${CONFIG_DIR}/kubeconfig" --talosconfig "${CONFIG_DIR}/talosconfig" --nodes "${FIRST_CP_IP}"
