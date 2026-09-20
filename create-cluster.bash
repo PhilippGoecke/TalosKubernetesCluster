@@ -10,6 +10,7 @@ umask 077
 # ==========================================
 CLUSTER_NAME="production-cluster"
 TALOS_VERSION="v1.14.1" # Replace with your preferred Talos version
+KUBERNETES_VERSION="v1.36.1" # Replace with your preferred Kubernetes version
 CONTROL_PLANE_VIP="192.168.168.212" # Shared Virtual IP for the Control Plane API
 
 # Define nodes using an array format: "IP:ROLE"
@@ -57,7 +58,8 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
     log "✅ Secrets generated successfully."
     talosctl gen config "${CLUSTER_NAME}" "https://${CONTROL_PLANE_VIP}:6443" \
         --output-dir "${CONFIG_DIR}" \
-        --with-secrets "${CONFIG_DIR}/secrets.yaml"
+        --with-secrets "${CONFIG_DIR}/secrets.yaml" \
+        --kubernetes-version "${KUBERNETES_VERSION}"
     log "✅ Base configuration generated successfully."
 else
     log "ℹ️ Base configurations already exist. Skipping generation."
