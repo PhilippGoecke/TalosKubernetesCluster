@@ -38,6 +38,7 @@ require_cmd() {
 }
 
 require_cmd talosctl
+require_cmd jq
 
 if [[ ! "${CONTROL_PLANE_VIP}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     fail "CONTROL_PLANE_VIP must be a valid IPv4 address: ${CONTROL_PLANE_VIP}"
@@ -104,6 +105,41 @@ for NODE in "${NODES[@]}"; do
         sleep 2
     done
     log "✅ Node ${IP} is ready."
+
+    TALOS_INSTALL_DISK="$(
+        talosctl get disks --insecure --nodes "${IP}" --output json |
+            jq -rs '[.[] | select(
+                .spec.dev_path != null and
+                (.spec.read_only // false | not) and
+                (.spec.removable // false | not)
+            ) | .spec.dev_path] | first // empty'
+    )"
+    [[ -n "${TALOS_INSTALL_DISK}" ]] || fail "No writable, non-removable bootable disk was found on ${IP}."
+
+    log "💾 Installing Talos on ${IP} to dynamically selected disk ${TALOS_INSTALL_DISK}..."
+    log "⚠️ All data on ${TALOS_INSTALL_DISK} at ${IP} will be destroyed."
+    talosctl install \
+        --insecure \
+        --nodes "${IP}" \
+        --disk "${TALOS_INSTALL_DISK}"
+
+    log "⏳ Waiting for ${IP} to reboot after Talos installation..."
+    WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+    while talosctl get machinestatus --insecure --nodes "${IP}" >/dev/null 2>&1; do
+        if (( SECONDS >= WAIT_DEADLINE )); then
+            fail "Timed out waiting for ${IP} to reboot after Talos installation."
+        fi
+        sleep 2
+    done
+
+    WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+    while ! talosctl get machinestatus --insecure --nodes "${IP}" >/dev/null 2>&1; do
+        if (( SECONDS >= WAIT_DEADLINE )); then
+            fail "Timed out waiting for ${IP} to return after Talos installation."
+        fi
+        sleep 2
+    done
+    log "✅ Talos is running from disk on ${IP}."
 
     if [[ "${ROLE}" == "controlplane" ]]; then
         log "🛠️ Applying control plane configuration..."
