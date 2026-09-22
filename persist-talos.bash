@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Example: IP=192.0.2.10 TALOS_CONFIG_FILE=./controlplane.yaml TALOSCONFIG=./talosconfig bash persist-talos.bash
 
 # Requires Bash 4+ (for mapfile), jq, talosctl, and an interactive terminal.
 set -o pipefail
