@@ -1,43 +1,42 @@
+#!/usr/bin/env bash
 
-        #!/usr/bin/env bash
+# Requires Bash 4+ (for mapfile), jq, talosctl, and an interactive terminal.
+set -o pipefail
 
-        # Requires Bash 4+ (for mapfile), jq, talosctl, and an interactive terminal.
-        set -o pipefail
+log() {
+    printf '%s\n' "$*"
+}
 
-        log() {
-            printf '%s\n' "$*"
-        }
+fail() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 1
+}
 
-        fail() {
-            printf 'ERROR: %s\n' "$*" >&2
-            exit 1
-        }
+(( BASH_VERSINFO[0] >= 4 )) || fail "Bash 4 or later is required."
+command -v jq >/dev/null 2>&1 || fail "jq is required."
+command -v talosctl >/dev/null 2>&1 || fail "talosctl is required."
+[[ -t 0 ]] || fail "An interactive terminal is required for disk selection."
 
-        (( BASH_VERSINFO[0] >= 4 )) || fail "Bash 4 or later is required."
-        command -v jq >/dev/null 2>&1 || fail "jq is required."
-        command -v talosctl >/dev/null 2>&1 || fail "talosctl is required."
-        [[ -t 0 ]] || fail "An interactive terminal is required for disk selection."
+# Supply a complete machine configuration and its matching client credentials.
+[[ -n "${IP:-}" ]] || fail "IP must be set."
+[[ -f "${TALOS_CONFIG_FILE:-}" && -r "${TALOS_CONFIG_FILE:-}" ]] || fail "Set TALOS_CONFIG_FILE to a readable Talos machine configuration."
+[[ -f "${TALOSCONFIG:-}" && -r "${TALOSCONFIG:-}" ]] || fail "Set TALOSCONFIG to the matching readable talosconfig client credentials."
+WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}"
+[[ "${WAIT_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]{0,8}$ ]] || fail "WAIT_TIMEOUT_SECONDS must be a positive integer of at most 9 digits."
 
-        # Supply a complete machine configuration and its matching client credentials.
-        [[ -n "${IP:-}" ]] || fail "IP must be set."
-        [[ -f "${TALOS_CONFIG_FILE:-}" && -r "${TALOS_CONFIG_FILE:-}" ]] || fail "Set TALOS_CONFIG_FILE to a readable Talos machine configuration."
-        [[ -f "${TALOSCONFIG:-}" && -r "${TALOSCONFIG:-}" ]] || fail "Set TALOSCONFIG to the matching readable talosconfig client credentials."
-        WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}"
-        [[ "${WAIT_TIMEOUT_SECONDS}" =~ ^[1-9][0-9]{0,8}$ ]] || fail "WAIT_TIMEOUT_SECONDS must be a positive integer of at most 9 digits."
-
-        log "🔎 Checking that ${IP} is in maintenance mode before persisting Talos to disk..."
-    CURRENT_STAGE="$(
-            set -o pipefail
-        talosctl get machinestatus --insecure --nodes "${IP}" --output json 2>/dev/null |
-            jq -rs '.[0].spec.stage // empty'
-        )" || fail "Unable to query machine status for ${IP}."
-    if [[ -z "${CURRENT_STAGE}" ]]; then
-        fail "Unable to determine machine stage for ${IP}. Is it reachable and running Talos in maintenance mode?"
-    fi
-    if [[ "${CURRENT_STAGE}" != "maintenance" ]]; then
-        fail "${IP} is in stage '${CURRENT_STAGE}', expected 'maintenance'. Refusing to install to avoid overwriting a running system."
-    fi
-    log "✅ ${IP} is in maintenance mode."
+log "🔎 Checking that ${IP} is in maintenance mode before persisting Talos to disk..."
+CURRENT_STAGE="$(
+    set -o pipefail
+    talosctl get machinestatus --insecure --nodes "${IP}" --output json 2>/dev/null |
+        jq -rs '.[0].spec.stage // empty'
+)" || fail "Unable to query machine status for ${IP}."
+if [[ -z "${CURRENT_STAGE}" ]]; then
+    fail "Unable to determine machine stage for ${IP}. Is it reachable and running Talos in maintenance mode?"
+fi
+if [[ "${CURRENT_STAGE}" != "maintenance" ]]; then
+    fail "${IP} is in stage '${CURRENT_STAGE}', expected 'maintenance'. Refusing to install to avoid overwriting a running system."
+fi
+log "✅ ${IP} is in maintenance mode."
 
     log "💽 Available disks on ${IP}:"
     DISK_OUTPUT="$(
