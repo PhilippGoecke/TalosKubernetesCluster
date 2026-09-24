@@ -12,13 +12,13 @@
 # Examples:
 #   ./bootstrap-talos-libvirt.bash
 #   LIBVIRT_NETWORK=lab CLUSTER_NAME=lab ./bootstrap-talos-libvirt.bash
-#   TALOS_VERSION=v1.10.0 ./bootstrap-talos-libvirt.bash create
+#   TALOS_VERSION=v1.14.1 ./bootstrap-talos-libvirt.bash create
 #   ./bootstrap-talos-libvirt.bash destroy
 #
 # Optional environment variables:
 #   CLUSTER_NAME          Kubernetes cluster name              (talos-lab)
 #   LIBVIRT_NETWORK       Existing DHCP-enabled libvirt network (default)
-#   TALOS_VERSION         Talos version used for ISO download  (v1.10.0)
+#   TALOS_VERSION         Talos version used for ISO download  (v1.14.1)
 #   TALOS_ISO_URL         Override the Talos ISO URL
 #   VM_MEMORY_MIB         RAM per VM                           (4096)
 #   VM_VCPUS              vCPUs per VM                         (2)
