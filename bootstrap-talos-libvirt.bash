@@ -85,12 +85,12 @@ require_commands() {
 }
 
 ensure_network() {
-  virsh net-info "${LIBVIRT_NETWORK}" >/dev/null 2>&1 ||
+  virsh --connect qemu:///system net-info "${LIBVIRT_NETWORK}" >/dev/null 2>&1 ||
     die "Libvirt network does not exist: ${LIBVIRT_NETWORK}"
 
-  if ! virsh net-info "${LIBVIRT_NETWORK}" | grep -q '^Active:.*yes'; then
+  if ! virsh --connect qemu:///system net-info "${LIBVIRT_NETWORK}" | grep -q '^Active:.*yes'; then
     log "Starting libvirt network: ${LIBVIRT_NETWORK}"
-    virsh net-start "${LIBVIRT_NETWORK}"
+    virsh --connect qemu:///system net-start "${LIBVIRT_NETWORK}"
   fi
 }
 
