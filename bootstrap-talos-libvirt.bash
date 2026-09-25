@@ -85,6 +85,7 @@ require_commands() {
 }
 
 ensure_network() {
+  # Allow the current user to access libvirt without sudo: sudo usermod -aG libvirt "$USER" (then log out and back in).
   virsh --connect qemu:///system net-info "${LIBVIRT_NETWORK}" >/dev/null 2>&1 ||
     die "Libvirt network does not exist: ${LIBVIRT_NETWORK}"
 
