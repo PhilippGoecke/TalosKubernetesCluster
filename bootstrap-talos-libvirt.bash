@@ -21,7 +21,7 @@
 #   TALOS_VERSION         Talos version used for ISO download  (v1.14.1)
 #   TALOS_ISO_URL         Override the Image Factory ISO URL
 #   TALOS_SCHEMATIC_ID    Reuse an existing Image Factory schematic
-#   VM_MEMORY_MIB         RAM per VM                           (6144)
+#   VM_MEMORY_MIB         RAM per VM                           (4096)
 #   VM_VCPUS              vCPUs per VM                         (2)
 #   VM_DISK_GIB           OS disk capacity per VM              (40)
 #   VM_DIRECTORY          Directory for qcow2 VM disks
@@ -42,7 +42,7 @@ CLUSTER_NAME="${CLUSTER_NAME:-talos-lab}"
 LIBVIRT_NETWORK="${LIBVIRT_NETWORK:-default}"
 TALOS_VERSION="${TALOS_VERSION:-v1.14.1}"
 TALOS_SCHEMATIC_ID="${TALOS_SCHEMATIC_ID:-}"
-VM_MEMORY_MIB="${VM_MEMORY_MIB:-6144}"
+VM_MEMORY_MIB="${VM_MEMORY_MIB:-4096}"
 VM_VCPUS="${VM_VCPUS:-2}"
 VM_DISK_GIB="${VM_DISK_GIB:-40}"
 VM_DIRECTORY="${VM_DIRECTORY:-/var/lib/libvirt/images/${CLUSTER_NAME}}"
@@ -141,6 +141,7 @@ create_vm() {
     --vcpus "${VM_VCPUS}" \
     --cpu host-passthrough \
     --machine q35 \
+    --boot uefi \
     --disk "path=${VM_DIRECTORY}/${name}.qcow2,size=${VM_DISK_GIB},format=qcow2,bus=virtio" \
     --network "network=${LIBVIRT_NETWORK},model=virtio" \
     --cdrom "${ISO_PATH}" \
