@@ -39,7 +39,7 @@ readonly ACTION="${1:-bootstrap}"
 
 CLUSTER_NAME="${CLUSTER_NAME:-talos-lab}"
 LIBVIRT_NETWORK="${LIBVIRT_NETWORK:-default}"
-TALOS_VERSION="${TALOS_VERSION:-v1.10.0}"
+TALOS_VERSION="${TALOS_VERSION:-v1.14.1}"
 TALOS_ISO_URL="${TALOS_ISO_URL:-https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/metal-amd64.iso}"
 VM_MEMORY_MIB="${VM_MEMORY_MIB:-4096}"
 VM_VCPUS="${VM_VCPUS:-2}"
