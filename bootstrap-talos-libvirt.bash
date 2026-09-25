@@ -6,7 +6,7 @@
 #   talos-worker-1 .. talos-worker-3 worker nodes
 #
 # Prerequisites on the *Linux libvirt host*:
-#   bash, virsh, virt-install, curl, talosctl
+#   bash, virsh, virt-install, curl, jq, talosctl
 # The selected libvirt network must provide DHCP (the "default" network does).
 #
 # Examples:
@@ -19,7 +19,8 @@
 #   CLUSTER_NAME          Kubernetes cluster name              (talos-lab)
 #   LIBVIRT_NETWORK       Existing DHCP-enabled libvirt network (default)
 #   TALOS_VERSION         Talos version used for ISO download  (v1.14.1)
-#   TALOS_ISO_URL         Override the Talos ISO URL
+#   TALOS_ISO_URL         Override the Image Factory ISO URL
+#   TALOS_SCHEMATIC_ID    Reuse an existing Image Factory schematic
 #   VM_MEMORY_MIB         RAM per VM                           (4096)
 #   VM_VCPUS              vCPUs per VM                         (2)
 #   VM_DISK_GIB           OS disk capacity per VM              (40)
@@ -40,7 +41,7 @@ readonly ACTION="${1:-bootstrap}"
 CLUSTER_NAME="${CLUSTER_NAME:-talos-lab}"
 LIBVIRT_NETWORK="${LIBVIRT_NETWORK:-default}"
 TALOS_VERSION="${TALOS_VERSION:-v1.14.1}"
-TALOS_ISO_URL="${TALOS_ISO_URL:-https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/metal-amd64.iso}"
+TALOS_SCHEMATIC_ID="${TALOS_SCHEMATIC_ID:-}"
 VM_MEMORY_MIB="${VM_MEMORY_MIB:-4096}"
 VM_VCPUS="${VM_VCPUS:-2}"
 VM_DISK_GIB="${VM_DISK_GIB:-40}"
@@ -50,7 +51,7 @@ DISK_DEVICE="${DISK_DEVICE:-/dev/vda}"
 IP_TIMEOUT_SECONDS="${IP_TIMEOUT_SECONDS:-300}"
 SKIP_BOOTSTRAP="${SKIP_BOOTSTRAP:-false}"
 
-readonly ISO_PATH="${STATE_DIRECTORY}/talos-${TALOS_VERSION}-amd64.iso"
+readonly ISO_PATH="${STATE_DIRECTORY}/talos-${TALOS_VERSION}-amd64-custom.iso"
 readonly KUBECONFIG_PATH="${STATE_DIRECTORY}/kubeconfig"
 readonly CONTROL_PLANES=( "${CLUSTER_NAME}-controlplane-1" "${CLUSTER_NAME}-controlplane-2" "${CLUSTER_NAME}-controlplane-3" )
 readonly WORKERS=( "${CLUSTER_NAME}-worker-1" "${CLUSTER_NAME}-worker-2" "${CLUSTER_NAME}-worker-3" )
@@ -103,12 +104,25 @@ ensure_network() {
 }
 
 download_iso() {
+  local schematic_id iso_url
+
   mkdir -p "${STATE_DIRECTORY}"
   if [[ ! -s "${ISO_PATH}" ]]; then
-    log "Downloading Talos ISO: ${TALOS_ISO_URL}"
-    curl --fail --location --retry 3 --output "${ISO_PATH}" "${TALOS_ISO_URL}"
+    schematic_id="${TALOS_SCHEMATIC_ID}"
+    if [[ -z "${schematic_id}" ]]; then
+      log "Creating Image Factory schematic with iscsi-tools and util-linux-tools"
+      schematic_id=$(curl --fail --silent --show-error --retry 3 \
+        --request POST \
+        --header 'Content-Type: application/json' \
+        --data '{"customization":{"systemExtensions":{"officialExtensions":["siderolabs/iscsi-tools","siderolabs/util-linux-tools"]}}}' \
+        https://factory.talos.dev/schematics | jq --raw-output '.id')
+      [[ -n "${schematic_id}" && "${schematic_id}" != "null" ]] || die "Image Factory did not return a schematic ID"
+    fi
+    iso_url="${TALOS_ISO_URL:-https://factory.talos.dev/image/${schematic_id}/${TALOS_VERSION}/metal-amd64.iso}"
+    log "Downloading custom Talos ISO: ${iso_url}"
+    curl --fail --location --retry 3 --output "${ISO_PATH}" "${iso_url}"
   else
-    log "Using existing Talos ISO: ${ISO_PATH}"
+    log "Using existing custom Talos ISO: ${ISO_PATH}"
   fi
 }
 
@@ -278,7 +292,7 @@ destroy_cluster() {
 main() {
   case "${ACTION}" in
     bootstrap|create)
-      require_commands virsh virt-install curl
+      require_commands virsh virt-install curl jq
       [[ "${ACTION}" == "create" || "${SKIP_BOOTSTRAP}" == "true" ]] || require_commands talosctl
       ensure_network
       download_iso
