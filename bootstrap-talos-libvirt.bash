@@ -138,7 +138,9 @@ create_vm() {
 }
 
 create_cluster_vms() {
-  mkdir -p "${VM_DIRECTORY}"
+  if [[ ! -d "${VM_DIRECTORY}" ]]; then
+    die "VM directory does not exist: ${VM_DIRECTORY}"
+  fi
   local node
   for node in "${ALL_NODES[@]}"; do
     create_vm "${node}"
