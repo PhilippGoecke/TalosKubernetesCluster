@@ -141,7 +141,6 @@ create_vm() {
     --vcpus "${VM_VCPUS}" \
     --cpu host-passthrough \
     --machine q35 \
-    --boot uefi \
     --disk "path=${VM_DIRECTORY}/${name}.qcow2,size=${VM_DISK_GIB},format=qcow2,bus=virtio" \
     --network "network=${LIBVIRT_NETWORK},model=virtio" \
     --cdrom "${ISO_PATH}" \
