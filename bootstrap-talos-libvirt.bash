@@ -295,6 +295,7 @@ main() {
     destroy)
       require_commands virsh
       destroy_cluster
+      rm -rf -- "${STATE_DIRECTORY}"
       ;;
     -h|--help|help)
       usage
