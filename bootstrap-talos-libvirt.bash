@@ -52,7 +52,7 @@ SKIP_BOOTSTRAP="${SKIP_BOOTSTRAP:-false}"
 
 readonly ISO_PATH="${STATE_DIRECTORY}/talos-${TALOS_VERSION}-amd64.iso"
 readonly KUBECONFIG_PATH="${STATE_DIRECTORY}/kubeconfig"
-readonly CONTROL_PLANES=( "${CLUSTER_NAME}-cp-1" "${CLUSTER_NAME}-cp-2" "${CLUSTER_NAME}-cp-3" )
+readonly CONTROL_PLANES=( "${CLUSTER_NAME}-controlplane-1" "${CLUSTER_NAME}-controlplane-2" "${CLUSTER_NAME}-controlplane-3" )
 readonly WORKERS=( "${CLUSTER_NAME}-worker-1" "${CLUSTER_NAME}-worker-2" "${CLUSTER_NAME}-worker-3" )
 readonly ALL_NODES=( "${CONTROL_PLANES[@]}" "${WORKERS[@]}" )
 
@@ -131,7 +131,7 @@ create_vm() {
     --network "network=${LIBVIRT_NETWORK},model=virtio" \
     --cdrom "${ISO_PATH}" \
     --os-variant generic \
-    --graphics none \
+    --graphics vnc,listen=127.0.0.1,port=-1 \
     --console pty,target.type=serial \
     --noautoconsole \
     --import
