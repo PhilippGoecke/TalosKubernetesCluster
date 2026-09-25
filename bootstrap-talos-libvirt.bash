@@ -233,10 +233,13 @@ configure_talos() {
   done
 
   log "Waiting for the first control-plane node to become reachable"
-  talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
+  until talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
     --nodes "${control_plane_ip}" \
     --endpoints "${control_plane_ip}" \
-    health --wait-timeout 15m
+    health --wait-timeout 15m; do
+    log "Control-plane API is not ready yet; retrying in 10 seconds"
+    sleep 10
+  done
 
   log "Bootstrapping the Talos control plane"
   talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
