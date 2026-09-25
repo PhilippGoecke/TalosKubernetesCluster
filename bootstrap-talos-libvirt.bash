@@ -91,7 +91,14 @@ ensure_network() {
 
   if ! virsh --connect qemu:///system net-info "${LIBVIRT_NETWORK}" | grep -q '^Active:.*yes'; then
     log "Starting libvirt network: ${LIBVIRT_NETWORK}"
-    virsh --connect qemu:///system net-start "${LIBVIRT_NETWORK}"
+    # The network can become active between the status check and net-start.
+    local start_error
+    if ! start_error=$(virsh --connect qemu:///system net-start "${LIBVIRT_NETWORK}" 2>&1); then
+      if ! virsh --connect qemu:///system net-info "${LIBVIRT_NETWORK}" | grep -q '^Active:.*yes'; then
+        printf '%s\n' "${start_error}" >&2
+        die "Failed to start libvirt network: ${LIBVIRT_NETWORK}"
+      fi
+    fi
   fi
 }
 
