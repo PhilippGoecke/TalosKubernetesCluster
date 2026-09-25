@@ -23,7 +23,7 @@
 #   TALOS_SCHEMATIC_ID    Reuse an existing Image Factory schematic
 #   VM_MEMORY_MIB         RAM per VM                           (4096)
 #   VM_VCPUS              vCPUs per VM                         (2)
-#   VM_DISK_GIB           OS disk capacity per VM              (40)
+#   VM_DISK_GIB           OS disk capacity per VM              (10)
 #   VM_DIRECTORY          Directory for qcow2 VM disks
 #   STATE_DIRECTORY       Directory for ISO, configs, kubeconfig
 #   DISK_DEVICE           Target installation disk             (/dev/vda)
@@ -44,7 +44,7 @@ TALOS_VERSION="${TALOS_VERSION:-v1.14.1}"
 TALOS_SCHEMATIC_ID="${TALOS_SCHEMATIC_ID:-}"
 VM_MEMORY_MIB="${VM_MEMORY_MIB:-4096}"
 VM_VCPUS="${VM_VCPUS:-2}"
-VM_DISK_GIB="${VM_DISK_GIB:-40}"
+VM_DISK_GIB="${VM_DISK_GIB:-10}"
 VM_DIRECTORY="${VM_DIRECTORY:-/var/lib/libvirt/images/${CLUSTER_NAME}}"
 STATE_DIRECTORY="${STATE_DIRECTORY:-${PWD}/.talos-libvirt/${CLUSTER_NAME}}"
 DISK_DEVICE="${DISK_DEVICE:-/dev/vda}"
