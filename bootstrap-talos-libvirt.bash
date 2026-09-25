@@ -154,7 +154,7 @@ node_ip() {
 
   while (( SECONDS < deadline )); do
     ip="$(
-      virsh domifaddr "${node}" --source lease 2>/dev/null |
+      virsh --connect qemu:///system domifaddr "${node}" --source lease 2>/dev/null |
         awk '$3 == "ipv4" {sub(/\/.*/, "", $4); print $4; exit}'
     )"
 
@@ -254,10 +254,10 @@ configure_talos() {
 destroy_cluster() {
   local node disk
   for node in "${ALL_NODES[@]}"; do
-    if virsh dominfo "${node}" >/dev/null 2>&1; then
+    if virsh --connect qemu:///system dominfo "${node}" >/dev/null 2>&1; then
       log "Removing ${node}"
-      virsh destroy "${node}" >/dev/null 2>&1 || true
-      virsh undefine "${node}" --nvram >/dev/null 2>&1 || virsh undefine "${node}"
+      virsh --connect qemu:///system destroy "${node}" >/dev/null 2>&1 || true
+      virsh --connect qemu:///system undefine "${node}" --nvram >/dev/null 2>&1 || virsh --connect qemu:///system undefine "${node}"
     fi
 
     disk="${VM_DIRECTORY}/${node}.qcow2"
