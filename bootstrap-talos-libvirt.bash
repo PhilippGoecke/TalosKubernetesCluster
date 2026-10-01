@@ -256,10 +256,13 @@ configure_talos() {
   done
 
   log "Bootstrapping the Talos control plane"
-  talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
+  until talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
     --nodes "${control_plane_ip}" \
     --endpoints "${control_plane_ip}" \
-    bootstrap
+    bootstrap; do
+    log "Control-plane bootstrap is not available yet; retrying in 10 seconds"
+    sleep 10
+  done
 
   log "Waiting for the Talos cluster to become healthy"
   talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
