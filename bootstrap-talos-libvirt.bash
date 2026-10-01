@@ -246,11 +246,11 @@ configure_talos() {
       --file "${STATE_DIRECTORY}/machine-config/worker.yaml"
   done
 
-  log "Waiting for the first control-plane node to become reachable"
+  log "Waiting for the first control-plane Talos API to become reachable"
   until talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
     --nodes "${control_plane_ip}" \
     --endpoints "${control_plane_ip}" \
-    health --wait-timeout 15m; do
+    version >/dev/null 2>&1; do
     log "Control-plane API is not ready yet; retrying in 10 seconds"
     sleep 10
   done
@@ -260,6 +260,12 @@ configure_talos() {
     --nodes "${control_plane_ip}" \
     --endpoints "${control_plane_ip}" \
     bootstrap
+
+  log "Waiting for the Talos cluster to become healthy"
+  talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
+    --nodes "${control_plane_ip}" \
+    --endpoints "${control_plane_ip}" \
+    health --wait-timeout 15m
 
   log "Retrieving kubeconfig"
   talosctl --talosconfig "${STATE_DIRECTORY}/machine-config/talosconfig" \
