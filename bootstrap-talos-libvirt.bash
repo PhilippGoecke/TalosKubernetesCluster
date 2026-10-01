@@ -278,7 +278,7 @@ configure_talos() {
 
   log "Cluster is bootstrapped."
   log "Use: export KUBECONFIG=${KUBECONFIG_PATH}"
-  log "Then: kubectl get nodes"
+  log "Then: kubectl get nodes -o wide"
 }
 
 destroy_cluster() {
