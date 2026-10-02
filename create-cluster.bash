@@ -11,12 +11,13 @@ umask 077
 CLUSTER_NAME="production-cluster"
 TALOS_VERSION="v1.14.1" # Replace with your preferred Talos version
 KUBERNETES_VERSION="v1.36.1" # Replace with your preferred Kubernetes version
-CONTROL_PLANE_VIP="192.168.168.212" # Shared Virtual IP for the Control Plane API
+CONTROL_PLANE_VIP="192.168.168.174" # Shared Virtual IP for the Control Plane API
 WAIT_TIMEOUT_SECONDS=600 # Maximum time to wait for a node to become ready
 
 # Define nodes using an array format: "IP:ROLE"
 # Roles must be either "controlplane" or "worker"
 NODES=(
+    "192.168.168.174:controlplane"
     "192.168.168.212:controlplane"
     "192.168.168.148:worker"
     "192.168.168.111:worker"
@@ -117,6 +118,16 @@ done
 if [[ ${CONTROL_PLANE_COUNT} -eq 0 ]]; then
     fail "No control plane nodes were defined. At least one node with role 'controlplane' is required."
 fi
+
+  log "Waiting for the first control-plane Talos API to become reachable"
+  until talosctl --talosconfig "${CONFIG_DIR}/talosconfig" \
+    --nodes "${FIRST_CP_IP}" \
+    --endpoints "${FIRST_CP_IP}" \
+    version >/dev/null 2>&1; do
+    log "Control-plane API is not ready yet; retrying in 10 seconds"
+    sleep 10
+  done
+  log "✅ First control-plane Talos API is reachable."
 
 # ==========================================
 # 3. BOOTSTRAP THE CLUSTER
