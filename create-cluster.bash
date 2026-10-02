@@ -8,20 +8,15 @@ umask 077
 # ==========================================
 # CONFIGURATION & VARIABLES
 # ==========================================
-CLUSTER_NAME="production-cluster"
-TALOS_VERSION="v1.14.1" # Replace with your preferred Talos version
-KUBERNETES_VERSION="v1.36.1" # Replace with your preferred Kubernetes version
-CONTROL_PLANE_VIP="192.168.168.174" # Shared Virtual IP for the Control Plane API
-WAIT_TIMEOUT_SECONDS=600 # Maximum time to wait for a node to become ready
+CLUSTER_NAME="${CLUSTER_NAME:-production-cluster}"
+TALOS_VERSION="${TALOS_VERSION:-v1.14.1}" # Replace with your preferred Talos version
+KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.36.1}" # Replace with your preferred Kubernetes version
+CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-192.168.168.174}" # Shared Virtual IP for the Control Plane API
+WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}" # Maximum time to wait for a node to become ready
 
-# Define nodes using an array format: "IP:ROLE"
+# Set NODES in the environment as a space-separated list of "IP:ROLE" entries.
 # Roles must be either "controlplane" or "worker"
-NODES=(
-    "192.168.168.174:controlplane"
-    "192.168.168.212:controlplane"
-    "192.168.168.148:worker"
-    "192.168.168.111:worker"
-)
+IFS=' ' read -r -a NODES <<< "${NODES:-192.168.168.174:controlplane 192.168.168.212:controlplane 192.168.168.148:worker 192.168.168.111:worker}"
 
 CONFIG_DIR="${PWD}/talos-cluster-config-${CLUSTER_NAME}"
 
