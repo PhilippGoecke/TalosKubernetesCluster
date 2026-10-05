@@ -12,7 +12,7 @@ echo "🚀 Starte Traefik und Whoami Bereitstellung..."
 
 # 1. Traefik Helm-Repository hinzufügen & aktualisieren
 echo "📦 Füge Traefik Helm-Repository hinzu..."
-helm repo add traefik https://github.io
+helm repo add traefik https://traefik.github.io/charts
 helm repo update
 
 # 2. Traefik installieren
