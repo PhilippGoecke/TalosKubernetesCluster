@@ -5,7 +5,7 @@ TALOS_VERSION="${TALOS_VERSION:-v1.14.4}"
 TALOS_SCHEMATIC_ID="${TALOS_SCHEMATIC_ID:-}"
 STATE_DIRECTORY="${STATE_DIRECTORY:-${PWD}/downloads}"
 
-readonly ISO_PATH="${STATE_DIRECTORY}/talos-${TALOS_VERSION}-amd64-custom.iso"
+readonly ISO_PATH="${STATE_DIRECTORY}/talos-${TALOS_VERSION}-amd64-uefi.iso"
 
 log() {
   printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*" >&2
@@ -32,7 +32,7 @@ download_iso() {
         https://factory.talos.dev/schematics | jq --raw-output '.id')
       [[ -n "${schematic_id}" && "${schematic_id}" != "null" ]] || die "Image Factory did not return a schematic ID"
     fi
-    iso_url="${TALOS_ISO_URL:-https://factory.talos.dev/image/${schematic_id}/${TALOS_VERSION}/metal-amd64.iso}"
+    iso_url="${TALOS_ISO_URL:-https://factory.talos.dev/image/${schematic_id}/${TALOS_VERSION}/metal-amd64-secureboot.iso}"
     log "Downloading custom Talos ISO: ${iso_url}"
     iso_tmp="${ISO_PATH}.part"
     curl --fail --location --retry 3 --output "${iso_tmp}" "${iso_url}"
