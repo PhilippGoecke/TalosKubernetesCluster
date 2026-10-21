@@ -42,6 +42,19 @@ if [[ ! "${NODE_IP}" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     fail "NODE_IP must be a valid IPv4 address: ${NODE_IP}"
 fi
 
+# Confirm the node is reachable through Talos's unauthenticated maintenance API
+# before creating configuration or making any setup changes.
+log "⏳ Verifying that ${NODE_IP} is reachable in maintenance mode..."
+WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+until talosctl get disks --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
+    if (( SECONDS >= WAIT_DEADLINE )); then
+        fail "${NODE_IP} did not become reachable in maintenance mode within ${WAIT_TIMEOUT_SECONDS}s."
+    fi
+    log "   Waiting for ${NODE_IP} to become reachable in maintenance mode..."
+    sleep 2
+done
+log "✅ Node ${NODE_IP} is reachable and in maintenance mode."
+
 mkdir -p "${CONFIG_DIR}"
 log "🚀 Starting Talos Cluster Bootstrap for: ${CLUSTER_NAME}"
 
