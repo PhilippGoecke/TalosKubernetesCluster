@@ -110,7 +110,7 @@ while ! talosctl get machinestatus --insecure --nodes "${NODE_IP}" >/dev/null 2>
 done
 log "✅ Node ${NODE_IP} is ready."
 log "🛠️ Applying single-node control plane configuration..."
-talosctl apply-config --insecure --nodes "${NODE_IP}" --file "${CONFIG_DIR}/controlplane.yaml"
+talosctl apply-config --insecure --nodes "${NODE_IP}" --file "${CONFIG_DIR}/controlplane.yaml" --mode=reboot
 
 log "Waiting for the single-node Talos API to become reachable"
 until talosctl --talosconfig "${CONFIG_DIR}/talosconfig" \
