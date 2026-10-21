@@ -26,14 +26,23 @@ helm upgrade --install cilium cilium/cilium \
 	"${version_args[@]}" \
 	--set kubeProxyReplacement=true \
 	--set enableExternalIPs=true \
+	--wait \
+	--timeout 10m
+
+kubectl --namespace kube-system rollout status daemonset/cilium --timeout=5m
+kubectl --namespace kube-system rollout status deployment/cilium-operator --timeout=5m
+
+# Enable Hubble in a separate Helm upgrade after Cilium is ready.
+helm upgrade cilium cilium/cilium \
+	--namespace kube-system \
+	"${version_args[@]}" \
+	--reuse-values \
 	--set hubble.enabled=true \
 	--set hubble.relay.enabled=true \
 	--set hubble.ui.enabled=true \
 	--wait \
 	--timeout 10m
 
-kubectl --namespace kube-system rollout status daemonset/cilium --timeout=5m
-kubectl --namespace kube-system rollout status deployment/cilium-operator --timeout=5m
 kubectl --namespace kube-system rollout status deployment/hubble-relay --timeout=5m
 kubectl --namespace kube-system rollout status deployment/hubble-ui --timeout=5m
 
