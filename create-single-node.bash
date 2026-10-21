@@ -9,11 +9,12 @@ umask 077
 # CONFIGURATION & VARIABLES
 # ==========================================
 CLUSTER_NAME="${CLUSTER_NAME:-production-cluster}"
-TALOS_VERSION="${TALOS_VERSION:-v1.14.4}" # Replace with your preferred Talos version
+TALOS_VERSION="${TALOS_VERSION:-v1.14.1}" # Replace with your preferred Talos version
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.36.1}" # Replace with your preferred Kubernetes version
 NODE_IP="${NODE_IP:-192.168.168.174}" # IP address of the single node
 CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-${NODE_IP}}" # Kubernetes API endpoint
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}" # Maximum time to wait for a node to become ready
+LOCAL_PATH_VERSION="${LOCAL_PATH_VERSION:-v0.0.31}" # local-path-provisioner version
 
 CONFIG_DIR="${PWD}/talos-cluster-config-${CLUSTER_NAME}"
 
@@ -54,7 +55,8 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
         --output-dir "${CONFIG_DIR}" \
         --with-secrets "${CONFIG_DIR}/secrets.yaml" \
         --kubernetes-version "${KUBERNETES_VERSION}" \
-        --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true}}'
+        --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true}}' \
+        --config-patch-control-plane '{"machine":{"kubelet":{"extraMounts":[{"destination":"/var/local-path-provisioner","type":"bind","source":"/var/local-path-provisioner","options":["bind","rshared","rw"]}]}}}'
     log "✅ Base configuration generated successfully."
 else
     log "ℹ️ Base configurations already exist. Skipping generation."
@@ -136,6 +138,24 @@ talosctl health \
 
 log "🔑 Fetching the kubeconfig..."
 talosctl kubeconfig "${CONFIG_DIR}/kubeconfig" --talosconfig "${CONFIG_DIR}/talosconfig" --nodes "${FIRST_CP_IP}"
+
+log "💾 Enabling local storage (local-path-provisioner ${LOCAL_PATH_VERSION})..."
+require_cmd kubectl
+export KUBECONFIG="${CONFIG_DIR}/kubeconfig"
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: local-path-storage
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+EOF
+kubectl apply -f "https://raw.githubusercontent.com/rancher/local-path-provisioner/${LOCAL_PATH_VERSION}/deploy/local-path-storage.yaml"
+kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl -n local-path-storage rollout status deployment/local-path-provisioner --timeout=300s
+log "✅ Default StorageClass 'local-path' is ready for PVCs."
 
 log "🎉 Success! Your Talos cluster '${CLUSTER_NAME}' is bootstrapping."
 log "📂 Secrets and configurations saved to: ${CONFIG_DIR}"
