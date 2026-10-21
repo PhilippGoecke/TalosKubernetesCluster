@@ -55,6 +55,7 @@ metadata:
   name: whoami
   namespace: ${NAMESPACE_APP}
 spec:
+  type: NodePort
   ports:
   - name: http
     port: 80
@@ -94,3 +95,17 @@ echo "http://${DOMAIN}"
 echo "--------------------------------------------------------"
 echo "💡 Hinweis: Wenn du auf Minikube oder Kind testest, stelle sicher,"
 echo "dass der LoadBalancer-Dienst erreichbar ist (z.B. via 'minikube tunnel')."
+
+# Direkter Zugriff auf Whoami über NodePort
+NODE_PORT=$(kubectl get service whoami --namespace "${NAMESPACE_APP}" --output jsonpath='{.spec.ports[0].nodePort}')
+NODE_IP=$(kubectl get nodes --output jsonpath='{.items[0].status.addresses[?(@.type=="ExternalIP")].address}')
+if [[ -z "${NODE_IP}" ]]; then
+  NODE_IP=$(kubectl get nodes --output jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+fi
+echo "🌐 Whoami NodePort: IP=${NODE_IP}, Port=${NODE_PORT}"
+if [[ "${NODE_IP}" == *:* ]]; then
+  echo "http://[${NODE_IP}]:${NODE_PORT}"
+else
+  echo "http://${NODE_IP}:${NODE_PORT}"
+fi
+echo "💡 Die Node-IP und der NodePort müssen von deinem Rechner aus erreichbar sein."
