@@ -24,6 +24,8 @@ fi
 helm upgrade --install cilium cilium/cilium \
 	--namespace kube-system \
 	"${version_args[@]}" \
+	--set kubeProxyReplacement=true \
+	--set enableExternalIPs=true \
 	--set hubble.enabled=true \
 	--set hubble.relay.enabled=true \
 	--set hubble.ui.enabled=true \
