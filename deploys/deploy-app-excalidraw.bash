@@ -8,7 +8,7 @@ NAMESPACE="excalidraw"
 APP_NAME="excalidraw"
 COLLAB_NAME="excalidraw-collab"
 # Change this to your actual target domain name
-DOMAIN_NAME="://example.com" 
+DOMAIN_NAME="example.com" 
 
 echo "==== Starting Excalidraw Deployment on Kubernetes ===="
 
