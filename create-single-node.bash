@@ -13,6 +13,7 @@ TALOS_VERSION="${TALOS_VERSION:-v1.14.1}" # Replace with your preferred Talos ve
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.36.1}" # Replace with your preferred Kubernetes version
 NODE_IP="${NODE_IP:-192.168.168.174}" # IP address of the single node
 CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-${NODE_IP}}" # Kubernetes API endpoint
+INSTALL_DISK="${INSTALL_DISK:-}" # Talos installation target; prompted when not set
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}" # Maximum time to wait for a node to become ready
 LOCAL_PATH_VERSION="${LOCAL_PATH_VERSION:-v0.0.31}" # local-path-provisioner version
 
@@ -48,6 +49,23 @@ log "🚀 Starting Talos Cluster Bootstrap for: ${CLUSTER_NAME}"
 # 1. GENERATE BASE CONFIGURATIONS
 # ==========================================
 if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
+    log "⏳ Waiting for ${NODE_IP} to become ready so Talos can report its disks..."
+    WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+    while ! talosctl get machinestatus --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
+        if (( SECONDS >= WAIT_DEADLINE )); then
+            fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${NODE_IP} to become ready."
+        fi
+        log "   ${NODE_IP} is not ready yet; checking again..."
+        sleep 2
+    done
+
+    log "💽 Disks reported by Talos on ${NODE_IP}:"
+    talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
+    if [[ -z "${INSTALL_DISK}" ]]; then
+        read -r -p "Enter the disk ID to use for Talos installation: " INSTALL_DISK
+    fi
+    [[ -n "${INSTALL_DISK}" ]] || fail "No installation disk was selected."
+
     log "📦 Generating base secrets and machine configurations..."
     talosctl gen secrets --output-file "${CONFIG_DIR}/secrets.yaml" --talos-version "${TALOS_VERSION}"
     log "✅ Secrets generated successfully."
@@ -55,6 +73,7 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
         --output-dir "${CONFIG_DIR}" \
         --with-secrets "${CONFIG_DIR}/secrets.yaml" \
         --kubernetes-version "${KUBERNETES_VERSION}" \
+        --install-disk "${INSTALL_DISK}" \
         --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true}}' \
         --config-patch-control-plane '{"machine":{"kubelet":{"extraMounts":[{"destination":"/var/local-path-provisioner","type":"bind","source":"/var/local-path-provisioner","options":["bind","rshared","rw"]}]}}}'
     log "✅ Base configuration generated successfully."
