@@ -75,7 +75,7 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
     log "💽 Disks reported by Talos on ${NODE_IP}:"
     talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
     if [[ -z "${INSTALL_DISK}" ]]; then
-        read -r -p "Enter the disk ID to use for Talos installation: " INSTALL_DISK
+        read -r -p "Enter the disk ID to use for Talos installation (e.g., /dev/sda): " INSTALL_DISK
     fi
     [[ -n "${INSTALL_DISK}" ]] || fail "No installation disk was selected."
 
