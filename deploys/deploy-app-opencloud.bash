@@ -47,12 +47,12 @@ for claim in opencloud-config opencloud-data; do
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-	name: ${claim}
+  name: ${claim}
 spec:
-	accessModes: [ReadWriteOnce]
-	resources:
-		requests:
-			storage: ${STORAGE_SIZE}
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: ${STORAGE_SIZE}
 EOF
 done
 
@@ -60,95 +60,95 @@ cat <<EOF | k apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-	name: opencloud
+  name: opencloud
 spec:
-	replicas: 1
-	strategy:
-		type: Recreate
-	selector:
-		matchLabels:
-			app: opencloud
-	template:
-		metadata:
-			labels:
-				app: opencloud
-		spec:
-			securityContext:
-				runAsUser: 1000
-				runAsGroup: 1000
-				fsGroup: 1000
-			initContainers:
-				- name: initialize
-					image: ${IMAGE}
-					command: [/bin/sh, -ec]
-					args:
-						- 'if [ ! -s /etc/opencloud/opencloud.yaml ]; then opencloud init --insecure; fi'
-					env:
-						- name: IDM_ADMIN_PASSWORD
-							valueFrom:
-								secretKeyRef:
-									name: opencloud-admin
-									key: password
-					volumeMounts:
-						- name: config
-							mountPath: /etc/opencloud
-						- name: data
-							mountPath: /var/lib/opencloud
-			containers:
-				- name: opencloud
-					image: ${IMAGE}
-					command: [opencloud, server]
-					env:
-						- name: OC_URL
-							value: '${OPENCLOUD_URL}'
-						# HTTP is restricted to the cluster or localhost port-forward.
-						# Terminate public TLS at the ingress controller.
-						- name: PROXY_TLS
-							value: 'false'
-						- name: OC_INSECURE
-							value: 'true'
-						- name: PROXY_HTTP_ADDR
-							value: '0.0.0.0:9200'
-					ports:
-						- name: http
-							containerPort: 9200
-					startupProbe:
-						tcpSocket:
-							port: http
-						periodSeconds: 5
-						failureThreshold: 60
-					readinessProbe:
-						tcpSocket:
-							port: http
-						periodSeconds: 10
-					resources:
-						requests:
-							cpu: 250m
-							memory: 512Mi
-					volumeMounts:
-						- name: config
-							mountPath: /etc/opencloud
-						- name: data
-							mountPath: /var/lib/opencloud
-			volumes:
-				- name: config
-					persistentVolumeClaim:
-						claimName: opencloud-config
-				- name: data
-					persistentVolumeClaim:
-						claimName: opencloud-data
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: opencloud
+  template:
+    metadata:
+      labels:
+        app: opencloud
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      initContainers:
+        - name: initialize
+          image: ${IMAGE}
+          command: [/bin/sh, -ec]
+          args:
+            - 'if [ ! -s /etc/opencloud/opencloud.yaml ]; then opencloud init --insecure; fi'
+          env:
+            - name: IDM_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-admin
+                  key: password
+          volumeMounts:
+            - name: config
+              mountPath: /etc/opencloud
+            - name: data
+              mountPath: /var/lib/opencloud
+      containers:
+        - name: opencloud
+          image: ${IMAGE}
+          command: [opencloud, server]
+          env:
+            - name: OC_URL
+              value: '${OPENCLOUD_URL}'
+            # HTTP is restricted to the cluster or localhost port-forward.
+            # Terminate public TLS at the ingress controller.
+            - name: PROXY_TLS
+              value: 'false'
+            - name: OC_INSECURE
+              value: 'true'
+            - name: PROXY_HTTP_ADDR
+              value: '0.0.0.0:9200'
+          ports:
+            - name: http
+              containerPort: 9200
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/opencloud
+            - name: data
+              mountPath: /var/lib/opencloud
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: opencloud-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: opencloud-data
 ---
 apiVersion: v1
 kind: Service
 metadata:
-	name: opencloud
+  name: opencloud
 spec:
-	selector:
-		app: opencloud
-	ports:
-		- name: http
-			port: 9200
-			targetPort: http
+  selector:
+    app: opencloud
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http
 EOF
 
 if [[ -n "$INGRESS_HOST" ]]; then
@@ -157,23 +157,23 @@ if [[ -n "$INGRESS_HOST" ]]; then
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-	name: opencloud
+  name: opencloud
 spec:
-	ingressClassName: ${INGRESS_CLASS}
-	tls:
-		- hosts: ['${INGRESS_HOST}']
-			secretName: ${TLS_SECRET}
-	rules:
-		- host: ${INGRESS_HOST}
-			http:
-				paths:
-					- path: /
-						pathType: Prefix
-						backend:
-							service:
-								name: opencloud
-								port:
-									name: http
+  ingressClassName: ${INGRESS_CLASS}
+  tls:
+    - hosts: ['${INGRESS_HOST}']
+      secretName: ${TLS_SECRET}
+  rules:
+    - host: ${INGRESS_HOST}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: opencloud
+                port:
+                  name: http
 EOF
 fi
 
