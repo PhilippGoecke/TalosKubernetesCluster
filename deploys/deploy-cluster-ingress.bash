@@ -15,20 +15,6 @@ done
 
 kubectl cluster-info >/dev/null
 
-# Install Cilium as the cluster CNI before deploying ingress-nginx.
-helm repo add cilium https://helm.cilium.io/ --force-update
-helm repo update cilium
-helm upgrade --install cilium cilium/cilium \
-  --namespace kube-system \
-  --set hubble.relay.enabled=true \
-  --set hubble.ui.enabled=true \
-  --wait \
-  --timeout 10m
-
-kubectl rollout status daemonset/cilium \
-  --namespace kube-system \
-  --timeout=10m
-
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx --force-update
 helm repo update ingress-nginx
 
@@ -45,15 +31,6 @@ kubectl rollout status "deployment/${RELEASE}-controller" \
 
 echo "Ingress controller deployed in namespace '$NAMESPACE'."
 
-echo
-echo "Talos cluster setup:"
-echo "  - Generate/select the Talos kubeconfig with talosctl kubeconfig, then verify"
-echo "    kubectl is using this cluster: kubectl get nodes. This script only needs"
-echo "    kubectl and Helm; do not run it on a Talos node."
-echo "  - This script installs Cilium as the cluster CNI and waits for it to be ready."
-echo "  - For SERVICE_TYPE=LoadBalancer, install/configure a LoadBalancer provider"
-echo "    such as MetalLB first and allocate an address range reachable by clients."
-echo "    Otherwise use SERVICE_TYPE=NodePort and route to reachable Talos node IPs."
 echo
 echo "To access applications through this ingress controller, configure:"
 echo "  - A Kubernetes Service for each application (usually ClusterIP)."
