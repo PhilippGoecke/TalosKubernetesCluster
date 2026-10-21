@@ -17,7 +17,8 @@ die() {
 }
 
 download_iso() {
-  local schematic_id iso_url
+  local schematic_id iso_url expected_sha256 actual_sha256
+  local iso_tmp checksum_tmp
 
   mkdir -p "${STATE_DIRECTORY}"
   if [[ ! -s "${ISO_PATH}" ]]; then
@@ -33,7 +34,16 @@ download_iso() {
     fi
     iso_url="${TALOS_ISO_URL:-https://factory.talos.dev/image/${schematic_id}/${TALOS_VERSION}/metal-amd64.iso}"
     log "Downloading custom Talos ISO: ${iso_url}"
-    curl --fail --location --retry 3 --output "${ISO_PATH}" "${iso_url}"
+    iso_tmp="${ISO_PATH}.part"
+    checksum_tmp="${ISO_PATH}.sha256sum.part"
+    curl --fail --location --retry 3 --output "${iso_tmp}" "${iso_url}"
+    curl --fail --location --retry 3 --output "${checksum_tmp}" "${iso_url}.sha256sum"
+    expected_sha256=$(awk 'NR == 1 {print $1}' "${checksum_tmp}")
+    [[ "${expected_sha256}" =~ ^[[:xdigit:]]{64}$ ]] || die "Invalid SHA-256 checksum"
+    actual_sha256=$(sha256sum "${iso_tmp}" | awk '{print $1}')
+    [[ "${actual_sha256}" == "${expected_sha256}" ]] || die "SHA-256 verification failed for downloaded ISO"
+    mv "${iso_tmp}" "${ISO_PATH}"
+    rm -f "${checksum_tmp}"
   else
     log "Using existing custom Talos ISO: ${ISO_PATH}"
   fi
