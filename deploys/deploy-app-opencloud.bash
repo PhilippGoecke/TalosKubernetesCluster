@@ -34,16 +34,16 @@ kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -
 k() { kubectl -n "$NAMESPACE" "$@"; }
 
 # Keep the original administrator password across subsequent deployments.
-if ! kubectl get secret opencloud-admin >/dev/null 2>&1; then
+if ! k get secret opencloud-admin >/dev/null 2>&1; then
 	command -v openssl >/dev/null || die 'openssl is required to generate the initial password.'
 	password="${ADMIN_PASSWORD:-$(openssl rand -hex 24)}"
 	# Pass the password through stdin rather than exposing it in process arguments.
-	printf '%s' "$password" | kubectl create secret generic opencloud-admin --from-file=password=/dev/stdin
+	printf '%s' "$password" | k create secret generic opencloud-admin --from-file=password=/dev/stdin
 	unset password
 fi
 
 for claim in opencloud-config opencloud-data; do
-	cat <<EOF | kubectl apply -f -
+	cat <<EOF | k apply -f -
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -56,7 +56,7 @@ spec:
 EOF
 done
 
-cat <<EOF | kubectl apply -f -
+cat <<EOF | k apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -152,8 +152,8 @@ spec:
 EOF
 
 if [[ -n "$INGRESS_HOST" ]]; then
-	kubectl get secret "$TLS_SECRET" >/dev/null
-	cat <<EOF | kubectl apply -f -
+	k get secret "$TLS_SECRET" >/dev/null
+	cat <<EOF | k apply -f -
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -177,7 +177,7 @@ spec:
 EOF
 fi
 
-kubectl rollout status deployment/opencloud --timeout=300s
+k rollout status deployment/opencloud --timeout=300s
 printf '\nOpenCloud URL: %s\nUsername: admin\n' "$OPENCLOUD_URL"
 printf 'Retrieve the initial password (may differ if changed in OpenCloud):\n'
 printf "kubectl -n %s get secret opencloud-admin -o jsonpath='{.data.password}' | base64 --decode; echo\n" "$NAMESPACE"
