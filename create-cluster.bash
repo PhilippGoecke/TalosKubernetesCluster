@@ -43,18 +43,21 @@ if [[ ${#NODES[@]} -eq 0 ]]; then
     fail "No nodes were defined in NODES. At least one node is required."
 fi
 
-# Confirm the node is reachable through Talos's unauthenticated maintenance API
+# Confirm every node is reachable through Talos's unauthenticated maintenance API
 # before creating configuration or making any setup changes.
-log "⏳ Verifying that ${NODE_IP} is reachable in maintenance mode..."
-WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
-until talosctl get disks --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
-    if (( SECONDS >= WAIT_DEADLINE )); then
-        fail "${NODE_IP} did not become reachable in maintenance mode within ${WAIT_TIMEOUT_SECONDS}s."
-    fi
-    log "   Waiting for ${NODE_IP} to become reachable in maintenance mode..."
-    sleep 2
+for NODE in "${NODES[@]}"; do
+    NODE_IP="${NODE%%:*}"
+    log "⏳ Verifying that ${NODE_IP} is reachable in maintenance mode..."
+    WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+    until talosctl get disks --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
+        if (( SECONDS >= WAIT_DEADLINE )); then
+            fail "${NODE_IP} did not become reachable in maintenance mode within ${WAIT_TIMEOUT_SECONDS}s."
+        fi
+        log "   Waiting for ${NODE_IP} to become reachable in maintenance mode..."
+        sleep 2
+    done
+    log "✅ Node ${NODE_IP} is reachable and in maintenance mode."
 done
-log "✅ Node ${NODE_IP} is reachable and in maintenance mode."
 
 mkdir -p "${CONFIG_DIR}"
 log "🚀 Starting Talos Cluster Bootstrap for: ${CLUSTER_NAME}"
@@ -63,18 +66,11 @@ log "🚀 Starting Talos Cluster Bootstrap for: ${CLUSTER_NAME}"
 # 1. GENERATE BASE CONFIGURATIONS
 # ==========================================
 if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
-    log "⏳ Waiting for ${NODE_IP} to become ready so Talos can report its disks..."
-    WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
-    while ! talosctl get machinestatus --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
-        if (( SECONDS >= WAIT_DEADLINE )); then
-            fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${NODE_IP} to become ready."
-        fi
-        log "   ${NODE_IP} is not ready yet; checking again..."
-        sleep 2
+    for NODE in "${NODES[@]}"; do
+        NODE_IP="${NODE%%:*}"
+        log "💽 Disks reported by Talos on ${NODE_IP}:"
+        talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
     done
-
-    log "💽 Disks reported by Talos on ${NODE_IP}:"
-    talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
     if [[ -z "${INSTALL_DISK}" ]]; then
         read -r -p "Enter the disk ID to use for Talos installation (e.g., /dev/sda or none): " INSTALL_DISK
     fi
