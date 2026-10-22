@@ -75,13 +75,20 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
     log "💽 Disks reported by Talos on ${NODE_IP}:"
     talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
     if [[ -z "${INSTALL_DISK}" ]]; then
-        read -r -p "Enter the disk ID to use for Talos installation (e.g., /dev/sda): " INSTALL_DISK
+        read -r -p "Enter the disk ID to use for Talos installation (e.g., /dev/sda or none): " INSTALL_DISK
     fi
-    [[ -n "${INSTALL_DISK}" ]] || fail "No installation disk was selected."
+    if [[ "${INSTALL_DISK,,}" == "none" ]]; then
+        INSTALL_DISK=""
+    fi
+    if [[ -z "${INSTALL_DISK}" ]]; then
+        log "No installation disk selected; Talos will not be installed to a disk."
+    fi
 
     log "📦 Generating base secrets and machine configurations..."
     talosctl gen secrets --output-file "${CONFIG_DIR}/secrets.yaml" --talos-version "${TALOS_VERSION}"
     log "✅ Secrets generated successfully."
+    
+    log "⏳ Generating Talos machine configurations..."
     talosctl gen config "${CLUSTER_NAME}" "https://${CONTROL_PLANE_VIP}:6443" \
         --output-dir "${CONFIG_DIR}" \
         --with-secrets "${CONFIG_DIR}/secrets.yaml" \
