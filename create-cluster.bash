@@ -12,7 +12,6 @@ CLUSTER_NAME="${CLUSTER_NAME:-production-cluster}"
 TALOS_VERSION="${TALOS_VERSION:-v1.14.4}" # Replace with your preferred Talos version
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.37.1}" # Replace with your preferred Kubernetes version
 CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-192.168.168.174}" # Shared Virtual IP for the Control Plane API
-INSTALL_DISK="${INSTALL_DISK:-}" # Talos installation target; prompted when not set
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}" # Maximum time to wait for a node to become ready
 
 # Set NODES in the environment as a space-separated list of "IP:ROLE" entries.
@@ -83,16 +82,6 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
         log "💽 Disks reported by Talos on ${NODE_IP}:"
         talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
     done
-    if [[ -z "${INSTALL_DISK}" ]]; then
-        read -r -p "Enter the disk ID to use for Talos installation (e.g., /dev/sda or none): " INSTALL_DISK
-    fi
-    if [[ "${INSTALL_DISK,,}" == "none" ]]; then
-        INSTALL_DISK=""
-    fi
-    if [[ -z "${INSTALL_DISK}" ]]; then
-        log "No installation disk selected; Talos will not be installed to a disk."
-    fi
-
     log "📦 Generating base secrets and machine configurations..."
     talosctl gen secrets --output-file "${CONFIG_DIR}/secrets.yaml" --talos-version "${TALOS_VERSION}"
     log "✅ Secrets generated successfully."
@@ -116,8 +105,7 @@ EOF
         --output-dir "${CONFIG_DIR}" \
         --with-secrets "${CONFIG_DIR}/secrets.yaml" \
         --kubernetes-version "${KUBERNETES_VERSION}" \
-                --install-disk "${INSTALL_DISK}" \
-                --config-patch "@${CONFIG_PATCH}"
+        --config-patch "@${CONFIG_PATCH}"
         rm -f "${CONFIG_PATCH}"
     log "✅ Base configuration generated successfully."
 else
@@ -163,12 +151,37 @@ for NODE in "${NODES[@]}"; do
     done
     log "✅ Node ${IP} is ready."
 
+    INSTALL_DISK=""
+    read -r -p "Enter the installation disk for ${IP} (e.g., /dev/sda or none): " INSTALL_DISK
+    if [[ "${INSTALL_DISK,,}" == "none" ]]; then
+        INSTALL_DISK=""
+    elif [[ -n "${INSTALL_DISK}" && ! "${INSTALL_DISK}" =~ ^/dev/[A-Za-z0-9._/-]+$ ]]; then
+        fail "Invalid installation disk '${INSTALL_DISK}' for ${IP}. Use a /dev/... path or 'none'."
+    fi
+
+    NODE_CONFIG_PATCH=""
+    if [[ -n "${INSTALL_DISK}" ]]; then
+        NODE_CONFIG_PATCH="$(mktemp "${CONFIG_DIR}/.node-install-patch.XXXXXX")"
+        printf 'machine:\n  install:\n    disk: "%s"\n' "${INSTALL_DISK}" > "${NODE_CONFIG_PATCH}"
+    fi
+
     if [[ "${ROLE}" == "controlplane" || "${ROLE}" == "controlworker" ]]; then
         log "🛠️ Applying control plane configuration..."
-        talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/controlplane.yaml"
+        if [[ -n "${NODE_CONFIG_PATCH}" ]]; then
+            talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/controlplane.yaml" --config-patch "@${NODE_CONFIG_PATCH}"
+        else
+            talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/controlplane.yaml"
+        fi
     else
         log "🛠️ Applying worker configuration..."
-        talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/worker.yaml"
+        if [[ -n "${NODE_CONFIG_PATCH}" ]]; then
+            talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/worker.yaml" --config-patch "@${NODE_CONFIG_PATCH}"
+        else
+            talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/worker.yaml"
+        fi
+    fi
+    if [[ -n "${NODE_CONFIG_PATCH}" ]]; then
+        rm -f "${NODE_CONFIG_PATCH}"
     fi
 done
 
