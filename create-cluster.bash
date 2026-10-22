@@ -15,7 +15,7 @@ CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-192.168.168.174}" # Shared Virtual IP fo
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}" # Maximum time to wait for a node to become ready
 
 # Set NODES in the environment as a space-separated list of "IP:ROLE" entries.
-# Roles must be either "controlplane" or "worker"
+# Roles must be "controlplane", "worker", or "controlworker"
 IFS=' ' read -r -a NODES <<< "${NODES:-192.168.168.174:controlplane 192.168.168.212:controlplane 192.168.168.148:worker 192.168.168.111:worker}"
 
 CONFIG_DIR="${PWD}/talos-cluster-config-${CLUSTER_NAME}"
@@ -113,7 +113,7 @@ for NODE in "${NODES[@]}"; do
     ROLE="${NODE#*:}"
 
     case "${ROLE}" in
-        controlplane)
+        controlplane|controlworker)
             ((CONTROL_PLANE_COUNT += 1))
             if [[ -z "${FIRST_CP_IP}" ]]; then
                 FIRST_CP_IP="${IP}"
@@ -122,7 +122,7 @@ for NODE in "${NODES[@]}"; do
         worker)
             ;;
         *)
-            fail "Unknown role '${ROLE}' for node '${IP}'. Allowed roles: controlplane, worker"
+            fail "Unknown role '${ROLE}' for node '${IP}'. Allowed roles: controlplane, worker, controlworker"
             ;;
     esac
 
@@ -139,7 +139,7 @@ for NODE in "${NODES[@]}"; do
     done
     log "✅ Node ${IP} is ready."
 
-    if [[ "${ROLE}" == "controlplane" ]]; then
+    if [[ "${ROLE}" == "controlplane" || "${ROLE}" == "controlworker" ]]; then
         log "🛠️ Applying control plane configuration..."
         talosctl apply-config --insecure --nodes "${IP}" --file "${CONFIG_DIR}/controlplane.yaml"
     else
