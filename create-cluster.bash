@@ -9,8 +9,8 @@ umask 077
 # CONFIGURATION & VARIABLES
 # ==========================================
 CLUSTER_NAME="${CLUSTER_NAME:-production-cluster}"
-TALOS_VERSION="${TALOS_VERSION:-v1.14.1}" # Replace with your preferred Talos version
-KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.36.1}" # Replace with your preferred Kubernetes version
+TALOS_VERSION="${TALOS_VERSION:-v1.14.4}" # Replace with your preferred Talos version
+KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.37.1}" # Replace with your preferred Kubernetes version
 CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-192.168.168.174}" # Shared Virtual IP for the Control Plane API
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}" # Maximum time to wait for a node to become ready
 
@@ -43,6 +43,19 @@ if [[ ${#NODES[@]} -eq 0 ]]; then
     fail "No nodes were defined in NODES. At least one node is required."
 fi
 
+# Confirm the node is reachable through Talos's unauthenticated maintenance API
+# before creating configuration or making any setup changes.
+log "⏳ Verifying that ${NODE_IP} is reachable in maintenance mode..."
+WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+until talosctl get disks --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
+    if (( SECONDS >= WAIT_DEADLINE )); then
+        fail "${NODE_IP} did not become reachable in maintenance mode within ${WAIT_TIMEOUT_SECONDS}s."
+    fi
+    log "   Waiting for ${NODE_IP} to become reachable in maintenance mode..."
+    sleep 2
+done
+log "✅ Node ${NODE_IP} is reachable and in maintenance mode."
+
 mkdir -p "${CONFIG_DIR}"
 log "🚀 Starting Talos Cluster Bootstrap for: ${CLUSTER_NAME}"
 
@@ -50,13 +63,38 @@ log "🚀 Starting Talos Cluster Bootstrap for: ${CLUSTER_NAME}"
 # 1. GENERATE BASE CONFIGURATIONS
 # ==========================================
 if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
+    log "⏳ Waiting for ${NODE_IP} to become ready so Talos can report its disks..."
+    WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+    while ! talosctl get machinestatus --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
+        if (( SECONDS >= WAIT_DEADLINE )); then
+            fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${NODE_IP} to become ready."
+        fi
+        log "   ${NODE_IP} is not ready yet; checking again..."
+        sleep 2
+    done
+
+    log "💽 Disks reported by Talos on ${NODE_IP}:"
+    talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
+    if [[ -z "${INSTALL_DISK}" ]]; then
+        read -r -p "Enter the disk ID to use for Talos installation (e.g., /dev/sda or none): " INSTALL_DISK
+    fi
+    if [[ "${INSTALL_DISK,,}" == "none" ]]; then
+        INSTALL_DISK=""
+    fi
+    if [[ -z "${INSTALL_DISK}" ]]; then
+        log "No installation disk selected; Talos will not be installed to a disk."
+    fi
+
     log "📦 Generating base secrets and machine configurations..."
     talosctl gen secrets --output-file "${CONFIG_DIR}/secrets.yaml" --talos-version "${TALOS_VERSION}"
     log "✅ Secrets generated successfully."
+    
+    log "⏳ Generating Talos machine configurations..."
     talosctl gen config "${CLUSTER_NAME}" "https://${CONTROL_PLANE_VIP}:6443" \
         --output-dir "${CONFIG_DIR}" \
         --with-secrets "${CONFIG_DIR}/secrets.yaml" \
-        --kubernetes-version "${KUBERNETES_VERSION}"
+        --kubernetes-version "${KUBERNETES_VERSION}" \
+        --install-disk "${INSTALL_DISK}"
     log "✅ Base configuration generated successfully."
 else
     log "ℹ️ Base configurations already exist. Skipping generation."
