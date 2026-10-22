@@ -12,6 +12,7 @@ CLUSTER_NAME="${CLUSTER_NAME:-production-cluster}"
 TALOS_VERSION="${TALOS_VERSION:-v1.14.4}" # Replace with your preferred Talos version
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.37.1}" # Replace with your preferred Kubernetes version
 CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-192.168.168.174}" # Shared Virtual IP for the Control Plane API
+INSTALL_DISK="${INSTALL_DISK:-}" # Talos installation target; prompted when not set
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}" # Maximum time to wait for a node to become ready
 
 # Set NODES in the environment as a space-separated list of "IP:ROLE" entries.
@@ -82,7 +83,7 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
         log "💽 Disks reported by Talos on ${NODE_IP}:"
         talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
     done
-    if [[ -z "${INSTALL_DISK:-}" ]]; then
+    if [[ -z "${INSTALL_DISK}" ]]; then
         read -r -p "Enter the disk ID to use for Talos installation (e.g., /dev/sda or none): " INSTALL_DISK
     fi
     if [[ "${INSTALL_DISK,,}" == "none" ]]; then
