@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Hardened Talos bootstrap script
+# Talos bootstrap script
 set -Eeuo pipefail
 IFS=$'\n\t'
 umask 077
@@ -9,7 +9,7 @@ umask 077
 # CONFIGURATION & VARIABLES
 # ==========================================
 CLUSTER_NAME="${CLUSTER_NAME:-singlenode-cluster}"
-TALOS_VERSION="${TALOS_VERSION:-v1.14.1}" # Replace with your preferred Talos version
+TALOS_VERSION="${TALOS_VERSION:-v1.14.4}" # Replace with your preferred Talos version
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.37.1}" # Replace with your preferred Kubernetes version
 NODE_IP="${NODE_IP:-192.168.168.148}" # IP address of the single node
 CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-${NODE_IP}}" # Kubernetes API endpoint
