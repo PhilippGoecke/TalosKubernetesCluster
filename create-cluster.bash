@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Hardened Talos bootstrap script
+# Talos bootstrap script
 set -Eeuo pipefail
 IFS=$'\n\t'
 umask 077
@@ -82,7 +82,7 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
         log "💽 Disks reported by Talos on ${NODE_IP}:"
         talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
     done
-    if [[ -z "${INSTALL_DISK}" ]]; then
+    if [[ -z "${INSTALL_DISK:-}" ]]; then
         read -r -p "Enter the disk ID to use for Talos installation (e.g., /dev/sda or none): " INSTALL_DISK
     fi
     if [[ "${INSTALL_DISK,,}" == "none" ]]; then
