@@ -68,6 +68,17 @@ log "🚀 Starting Talos Cluster Bootstrap for: ${CLUSTER_NAME}"
 if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
     for NODE in "${NODES[@]}"; do
         NODE_IP="${NODE%%:*}"
+
+        log "⏳ Waiting for ${NODE_IP} to become ready so Talos can report its disks..."
+        WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+        while ! talosctl get machinestatus --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
+            if (( SECONDS >= WAIT_DEADLINE )); then
+                fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${NODE_IP} to become ready."
+            fi
+            log "   ${NODE_IP} is not ready yet; checking again..."
+            sleep 2
+        done
+
         log "💽 Disks reported by Talos on ${NODE_IP}:"
         talosctl get disks --insecure --nodes "${NODE_IP}" || fail "Could not retrieve disks from ${NODE_IP}."
     done
