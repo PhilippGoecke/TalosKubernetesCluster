@@ -192,8 +192,12 @@ log "🔑 Fetching the kubeconfig..."
 talosctl kubeconfig "${CONFIG_DIR}/kubeconfig" --talosconfig "${CONFIG_DIR}/talosconfig" --nodes "${FIRST_CP_IP}"
 
 log "💾 Enabling local storage (local-path-provisioner ${LOCAL_PATH_VERSION})..."
+log "🔎 Checking that kubectl is available before configuring Kubernetes resources..."
 require_cmd kubectl
+log "✅ kubectl is available."
+log "🔐 Selecting the kubeconfig generated for this cluster: ${CONFIG_DIR}/kubeconfig"
 export KUBECONFIG="${CONFIG_DIR}/kubeconfig"
+log "📁 Creating or updating the namespace and its Pod Security labels..."
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Namespace
@@ -204,10 +208,19 @@ metadata:
     pod-security.kubernetes.io/audit: privileged
     pod-security.kubernetes.io/warn: privileged
 EOF
+log "✅ Namespace local-path-storage is configured."
+log "📥 Applying the upstream local-path-provisioner ${LOCAL_PATH_VERSION} release manifest..."
 kubectl apply -f "https://raw.githubusercontent.com/rancher/local-path-provisioner/${LOCAL_PATH_VERSION}/deploy/local-path-storage.yaml"
+log "✅ Provisioner manifest applied."
+log "🔒 Updating the provisioner container security settings (non-root, no privilege escalation, dropped capabilities, and RuntimeDefault seccomp)..."
 kubectl -n local-path-storage patch deployment local-path-provisioner --type=strategic --patch '{"spec":{"template":{"spec":{"containers":[{"name":"local-path-provisioner","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]},"seccompProfile":{"type":"RuntimeDefault"}}}]}}}}'
+log "✅ Provisioner security settings updated."
+log "⭐ Marking the local-path StorageClass as the cluster default..."
 kubectl patch storageclass local-path --patch '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+log "✅ local-path StorageClass marked as default."
+log "⏳ Waiting up to 300 seconds for the provisioner deployment rollout to complete..."
 kubectl -n local-path-storage rollout status deployment/local-path-provisioner --timeout=300s
+log "✅ Provisioner rollout completed successfully."
 log "✅ Default StorageClass 'local-path' is ready for PVCs."
 
 log "🎉 Success! Your Talos cluster '${CLUSTER_NAME}' is bootstrapping with these settings:"
