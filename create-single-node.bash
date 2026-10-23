@@ -174,6 +174,20 @@ talosctl health \
     --nodes "${FIRST_CP_IP}" \
     --wait-timeout 10m
 
+log "⏳ Waiting for Talos to become ready..."
+WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+while ! talosctl get machinestatus \
+    --talosconfig "${CONFIG_DIR}/talosconfig" \
+    --endpoints "${FIRST_CP_IP}" \
+    --nodes "${FIRST_CP_IP}" >/dev/null 2>&1; do
+    if (( SECONDS >= WAIT_DEADLINE )); then
+        fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for Talos on ${FIRST_CP_IP} to become ready."
+    fi
+    log "   Talos on ${FIRST_CP_IP} is not ready yet; checking again..."
+    sleep 2
+done
+log "✅ Talos is ready."
+
 log "🔑 Fetching the kubeconfig..."
 talosctl kubeconfig "${CONFIG_DIR}/kubeconfig" --talosconfig "${CONFIG_DIR}/talosconfig" --nodes "${FIRST_CP_IP}"
 
