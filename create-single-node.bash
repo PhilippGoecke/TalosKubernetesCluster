@@ -194,7 +194,7 @@ kubectl apply -f "https://raw.githubusercontent.com/rancher/local-path-provision
 kubectl -n local-path-storage patch deployment local-path-provisioner --type=strategic \\
 kubectl -n local-path-storage patch deployment local-path-provisioner --type=strategic \
     --patch '{"spec":{"template":{"spec":{"containers":[{"name":"local-path-provisioner","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]},"seccompProfile":{"type":"RuntimeDefault"}}]}}}}}'
-kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass local-path --patch '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 kubectl -n local-path-storage rollout status deployment/local-path-provisioner --timeout=300s
 log "✅ Default StorageClass 'local-path' is ready for PVCs."
 
