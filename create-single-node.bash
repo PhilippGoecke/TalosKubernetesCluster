@@ -197,7 +197,15 @@ kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storagecl
 kubectl -n local-path-storage rollout status deployment/local-path-provisioner --timeout=300s
 log "✅ Default StorageClass 'local-path' is ready for PVCs."
 
-log "🎉 Success! Your Talos cluster '${CLUSTER_NAME}' is bootstrapping."
+log "🎉 Success! Your Talos cluster '${CLUSTER_NAME}' is bootstrapping with these settings:"
+log "   CLUSTER_NAME=${CLUSTER_NAME}"
+log "   TALOS_VERSION=${TALOS_VERSION}"
+log "   KUBERNETES_VERSION=${KUBERNETES_VERSION}"
+log "   NODE_IP=${NODE_IP}"
+log "   CONTROL_PLANE_VIP=${CONTROL_PLANE_VIP}"
+log "   INSTALL_DISK=${INSTALL_DISK:-none}"
+log "   WAIT_TIMEOUT_SECONDS=${WAIT_TIMEOUT_SECONDS}"
+log "   LOCAL_PATH_VERSION=${LOCAL_PATH_VERSION}"
 log "📂 Secrets and configurations saved to: ${CONFIG_DIR}"
 log "💡 To interact with your cluster, run:"
 log " export KUBECONFIG=${CONFIG_DIR}/kubeconfig"
