@@ -58,3 +58,6 @@ kubectl --namespace kube-system rollout status deployment/hubble-ui --timeout=15
 printf '\nCilium and Hubble installed. To access the Hubble UI, run:\n'
 printf 'kubectl --namespace kube-system port-forward service/hubble-ui 12000:80\n'
 printf 'Then open http://localhost:12000\n'
+
+printf '\nTo uninstall Cilium and Hubble, run:\n'
+printf 'helm uninstall cilium --namespace kube-system\n'
