@@ -94,8 +94,7 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
         --with-secrets "${CONFIG_DIR}/secrets.yaml" \
         --kubernetes-version "${KUBERNETES_VERSION}" \
         --install-disk "${INSTALL_DISK}" \
-        --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true}}' \
-        --config-patch-control-plane '{"machine":{"kubelet":{"extraMounts":[{"destination":"/var/local-path-provisioner","type":"bind","source":"/var/local-path-provisioner","options":["bind","rshared","rw"]}]}}}'
+        --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true,"network":{"cni":{"name":"none"}},"proxy":{"disabled":true}},"machine":{"features":{"kubePrism":{"enabled":true,"port":7445}},"kubelet":{"extraMounts":[{"destination":"/var/local-path-provisioner","type":"bind","source":"/var/local-path-provisioner","options":["bind","rshared","rw"]}]}}}'
     log "✅ Base configuration generated successfully."
 else
     log "ℹ️ Base configurations already exist. Skipping generation."
