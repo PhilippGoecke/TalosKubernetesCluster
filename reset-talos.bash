@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Wipe Talos configuration and ephemeral data, then reboot into maintenance mode.
 # Requires an installed Talos system and an authorized talosconfig.
-# Usage: ./reset-talos.sh NODE_IP [API_ENDPOINT]
+# Uses $TALOSCONFIG when set; otherwise uses $HOME/.talos/config.
+# Usage: ./reset-talos.sh NODE_IP [API_ENDPOINT] [TALOS_CONTEXT]
 
 if [[ $# -lt 1 || $# -gt 3 ]]; then
 	printf 'Usage: %s NODE_IP [API_ENDPOINT] [TALOS_CONTEXT]\n' "$0" >&2
@@ -15,10 +16,17 @@ command -v talosctl >/dev/null 2>&1 || {
 	exit 1
 }
 
+talosconfig="${TALOSCONFIG:-${HOME}/.talos/config}"
+if [[ ! -s "$talosconfig" ]]; then
+	printf 'Error: Talos config file is missing or empty: %s\n' "$talosconfig" >&2
+	printf 'Set TALOSCONFIG to a valid config file or create %s.\n' "${HOME}/.talos/config" >&2
+	exit 1
+fi
+
 node="$1"
 endpoint="${2:-$node}"
 context="${3:-}"
-talos_args=(--nodes "$node" --endpoints "$endpoint")
+talos_args=(--talosconfig "$talosconfig" --nodes "$node" --endpoints "$endpoint")
 if [[ -n "$context" ]]; then
 	talos_args+=(--context "$context")
 fi
