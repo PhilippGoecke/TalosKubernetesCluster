@@ -197,6 +197,9 @@ require_cmd kubectl
 log "✅ kubectl is available."
 log "🔐 Selecting the kubeconfig generated for this cluster: ${CONFIG_DIR}/kubeconfig"
 export KUBECONFIG="${CONFIG_DIR}/kubeconfig"
+log "⏳ Waiting for all Kubernetes nodes to become Ready..."
+kubectl wait --for=condition=Ready nodes --all --timeout="${WAIT_TIMEOUT_SECONDS}s"
+log "✅ All Kubernetes nodes are Ready."
 log "📁 Creating or updating the namespace and its Pod Security labels..."
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -239,3 +242,4 @@ printf 'export KUBECONFIG=%s/kubeconfig\n' "${CONFIG_DIR}" > "${CLUSTER_NAME}.so
 log " kubectl get nodes -o wide"
 log "💡 To clean up the cluster, you can run:"
 log " talosctl reset --talosconfig ${CONFIG_DIR}/talosconfig --nodes ${FIRST_CP_IP}"
+log " talosctl cluster destroy --talosconfig ${CONFIG_DIR}/talosconfig"
