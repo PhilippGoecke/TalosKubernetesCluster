@@ -71,4 +71,3 @@ main() {
 }
 
 main "$@"
-EOF
