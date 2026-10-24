@@ -8,11 +8,10 @@ readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly CREATE_SCRIPT="${SCRIPT_DIR}/create-single-node.bash"
 readonly LIBVIRT_NETWORK="${LIBVIRT_NETWORK:-default}"
 
-CLUSTER_NAME="${CLUSTER_NAME:-singlenode-cluster}"
+CLUSTER_NAME="${CLUSTER_NAME:-singlenode-virtcluster}"
 TALOS_VERSION="${TALOS_VERSION:-v1.13.3}"
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.36.1}"
-NODE_IP="${NODE_IP:-192.168.168.148}"
-CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-${NODE_IP}}"
+NODE_IP="${NODE_IP:-}"
 INSTALL_DISK="${INSTALL_DISK:-}"
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}"
 LOCAL_PATH_VERSION="${LOCAL_PATH_VERSION:-}"
@@ -61,6 +60,9 @@ main() {
   fi
 
   bootstrap_libvirt
+
+  NODE_IP="${NODE_IP:-$(virsh --connect qemu:///system domifaddr "${CLUSTER_NAME}" --source lease 2>/dev/null | awk 'NR > 2 && $4 ~ /^[0-9.]+\// { sub(/\/.*/, "", $4); print $4; exit }')}"
+  CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-${NODE_IP}}"
 
   export CLUSTER_NAME TALOS_VERSION KUBERNETES_VERSION NODE_IP
   export CONTROL_PLANE_VIP INSTALL_DISK WAIT_TIMEOUT_SECONDS LOCAL_PATH_VERSION
