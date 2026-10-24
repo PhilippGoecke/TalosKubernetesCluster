@@ -57,10 +57,8 @@ main() {
   [[ -f "${CREATE_SCRIPT}" ]] || die "Single-node script not found: ${CREATE_SCRIPT}"
 
   if [[ -z "${INSTALL_DISK}" ]]; then
-    INSTALL_DISK="$(virsh --connect qemu:///system domblklist --details "${CLUSTER_NAME}" 2>/dev/null | awk '$2 == "disk" && ($3 ~ /^(vd|sd|xvd)[a-z]+$/ || $3 ~ /^nvme[0-9]+n[0-9]+$/ || $3 ~ /^mmcblk[0-9]+$/) { print "/dev/" $3; exit }')" ||
-      die "Could not read disks from libvirt domain: ${CLUSTER_NAME}"
+    INSTALL_DISK="$(virsh --connect qemu:///system domblklist --details "${CLUSTER_NAME}" 2>/dev/null | awk '$2 == "disk" && ($3 ~ /^(vd|sd|xvd)[a-z]+$/ || $3 ~ /^nvme[0-9]+n[0-9]+$/ || $3 ~ /^mmcblk[0-9]+$/) { print "/dev/" $3; exit }')" || true
   fi
-  [[ -n "${INSTALL_DISK}" ]] || die "No installable disk found in libvirt domain: ${CLUSTER_NAME}; set INSTALL_DISK explicitly"
 
   bootstrap_libvirt
 
