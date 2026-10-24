@@ -92,6 +92,7 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
     talosctl gen config "${CLUSTER_NAME}" "https://${CONTROL_PLANE_VIP}:6443" \
         --output-dir "${CONFIG_DIR}" \
         --with-secrets "${CONFIG_DIR}/secrets.yaml" \
+        --talos-version "${TALOS_VERSION}" \
         --kubernetes-version "${KUBERNETES_VERSION}" \
         --install-disk "${INSTALL_DISK}" \
         --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true,"network":{"cni":{"name":"none"}},"proxy":{"disabled":true}},"machine":{"features":{"kubePrism":{"enabled":true,"port":7445}},"kubelet":{"extraMounts":[{"destination":"/var/local-path-provisioner","type":"bind","source":"/var/local-path-provisioner","options":["bind","rshared","rw"]}]}}}'
