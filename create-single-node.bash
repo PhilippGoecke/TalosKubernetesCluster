@@ -94,6 +94,7 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
         --with-secrets "${CONFIG_DIR}/secrets.yaml" \
         --talos-version "${TALOS_VERSION}" \
         --kubernetes-version "${KUBERNETES_VERSION}" \
+        --install-image "ghcr.io/siderolabs/installer:${TALOS_VERSION}" \
         --install-disk "${INSTALL_DISK}" \
         --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true,"network":{"cni":{"name":"none"}},"proxy":{"disabled":true}},"machine":{"features":{"kubePrism":{"enabled":true,"port":7445}},"kubelet":{"extraMounts":[{"destination":"/var/local-path-provisioner","type":"bind","source":"/var/local-path-provisioner","options":["bind","rshared","rw"]}]}}}'
     log "✅ Base configuration generated successfully."
@@ -117,7 +118,11 @@ while ! talosctl get machinestatus --insecure --nodes "${NODE_IP}" >/dev/null 2>
 done
 log "✅ Node ${NODE_IP} is ready."
 log "🛠️ Applying single-node control plane configuration..."
-talosctl apply-config --insecure --nodes "${NODE_IP}" --file "${CONFIG_DIR}/controlplane.yaml" --mode=reboot
+log "📦 Pinning the installation image to Talos ${TALOS_VERSION} (including existing configurations)."
+talosctl apply-config --insecure --nodes "${NODE_IP}" \
+    --file "${CONFIG_DIR}/controlplane.yaml" \
+    --config-patch "{\"machine\":{\"install\":{\"image\":\"ghcr.io/siderolabs/installer:${TALOS_VERSION}\"}}}" \
+    --mode=reboot
 
 log "Waiting for the single-node Talos API to become reachable"
 until talosctl --talosconfig "${CONFIG_DIR}/talosconfig" \
