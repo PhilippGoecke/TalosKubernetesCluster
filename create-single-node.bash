@@ -9,8 +9,8 @@ umask 077
 # CONFIGURATION & VARIABLES
 # ==========================================
 CLUSTER_NAME="${CLUSTER_NAME:-singlenode-cluster}"
-TALOS_VERSION="${TALOS_VERSION:-v1.14.4}" # Replace with your preferred Talos version
-KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.37.1}" # Replace with your preferred Kubernetes version
+TALOS_VERSION="${TALOS_VERSION:-v1.13.3}" # Replace with your preferred Talos version
+KUBERNETES_VERSION="${KUBERNETES_VERSION:-v1.36.1}" # Replace with your preferred Kubernetes version
 NODE_IP="${NODE_IP:-192.168.168.148}" # IP address of the single node
 CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-${NODE_IP}}" # Kubernetes API endpoint
 INSTALL_DISK="${INSTALL_DISK:-}" # Talos installation target; prompted when not set
@@ -111,7 +111,8 @@ log "⏳ Waiting for ${NODE_IP} to become ready before applying configuration...
 WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
 while ! talosctl get machinestatus --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
     if (( SECONDS >= WAIT_DEADLINE )); then
-        fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${NODE_IP} to become ready."
+        fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${NODE_IP} to respond to the Talos API."
+    while ! talosctl version --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
     fi
     log "   ${NODE_IP} is not ready yet; checking again..."
     sleep 2
