@@ -75,7 +75,7 @@ ensure_virtual_machine() {
     --network "network=${LIBVIRT_NETWORK}" \
     --os-variant generic \
     --cdrom "${TALOS_ISO_PATH}" \
-    --graphics none \
+    --graphics vnc,listen=127.0.0.1,port=-1 \
     --noautoconsole
 }
 
@@ -89,13 +89,31 @@ main() {
   ensure_virtual_machine
 
   if [[ -z "${INSTALL_DISK}" ]]; then
-    INSTALL_DISK="$(virsh --connect qemu:///system domblklist --details "${CLUSTER_NAME}" 2>/dev/null | awk '$2 == "disk" && ($3 ~ /^(vd|sd|xvd)[a-z]+$/ || $3 ~ /^nvme[0-9]+n[0-9]+$/ || $3 ~ /^mmcblk[0-9]+$/) { print "/dev/" $3; exit }')" || true
+    log "INSTALL_DISK is not set; querying block devices for ${CLUSTER_NAME}"
+    if block_devices="$(virsh --connect qemu:///system domblklist --details "${CLUSTER_NAME}" 2>&1)"; then
+      log "Block devices reported by libvirt:"
+      while IFS= read -r line; do
+        log "  ${line}"
+      done <<<"${block_devices}"
+      INSTALL_DISK="$(awk '$2 == "disk" && ($3 ~ /^(vd|sd|xvd)[a-z]+$/ || $3 ~ /^nvme[0-9]+n[0-9]+$/ || $3 ~ /^mmcblk[0-9]+$/) { print "/dev/" $3; exit }' <<<"${block_devices}")"
+      if [[ -n "${INSTALL_DISK}" ]]; then
+        log "Automatically selected install disk: ${INSTALL_DISK}"
+      else
+        log "No supported install disk device was found in the libvirt block-device list"
+      fi
+    else
+      log "Could not query libvirt block devices: ${block_devices}"
+    fi
   fi
 
   if [[ -z "${NODE_IP}" ]]; then
-    log "NODE_IP is not set; querying the DHCP lease for domain ${CLUSTER_NAME}"
-    NODE_IP="$(virsh --connect qemu:///system domifaddr "${CLUSTER_NAME}" --source lease 2>/dev/null | awk 'NR > 2 && $4 ~ /^[0-9.]+\// { sub(/\/.*/, "", $4); print $4; exit }' || true)"
-    [[ -n "${NODE_IP}" ]] || die "Could not determine the node IP from the DHCP lease; set NODE_IP to the node's address"
+    log "NODE_IP is not set; waiting for a DHCP lease for domain ${CLUSTER_NAME}"
+    for ((elapsed = 0; elapsed < WAIT_TIMEOUT_SECONDS; elapsed++)); do
+      NODE_IP="$(virsh --connect qemu:///system domifaddr "${CLUSTER_NAME}" --source lease 2>/dev/null | awk '{ for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(\/[0-9]+)?$/) { sub(/\/.*/, "", $i); print $i; exit } }' || true)"
+      [[ -n "${NODE_IP}" ]] && break
+      sleep 1
+    done
+    [[ -n "${NODE_IP}" ]] || die "Could not determine the node IP from the DHCP lease after ${WAIT_TIMEOUT_SECONDS}s; set NODE_IP to the node's address"
     log "Detected node IP: ${NODE_IP}"
   else
     log "Using configured node IP: ${NODE_IP}"
