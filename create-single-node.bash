@@ -122,7 +122,7 @@ log "📦 Pinning the installation image to Talos ${TALOS_VERSION} (including ex
 talosctl apply-config --insecure --nodes "${NODE_IP}" \
     --file "${CONFIG_DIR}/controlplane.yaml" \
     --config-patch "{\"machine\":{\"install\":{\"image\":\"ghcr.io/siderolabs/installer:${TALOS_VERSION}\"}}}" \
-    --mode=reboot
+    --mode=auto
 
 log "Waiting for the single-node Talos API to become reachable"
 until talosctl --talosconfig "${CONFIG_DIR}/talosconfig" \
