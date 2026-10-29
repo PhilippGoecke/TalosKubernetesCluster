@@ -61,8 +61,24 @@ main() {
 
   bootstrap_libvirt
 
-  NODE_IP="${NODE_IP:-$(virsh --connect qemu:///system domifaddr "${CLUSTER_NAME}" --source lease 2>/dev/null | awk 'NR > 2 && $4 ~ /^[0-9.]+\// { sub(/\/.*/, "", $4); print $4; exit }')}"
+  if [[ -z "${NODE_IP}" ]]; then
+    log "NODE_IP is not set; querying the DHCP lease for domain ${CLUSTER_NAME}"
+    NODE_IP="$(virsh --connect qemu:///system domifaddr "${CLUSTER_NAME}" --source lease 2>/dev/null | awk 'NR > 2 && $4 ~ /^[0-9.]+\// { sub(/\/.*/, "", $4); print $4; exit }' || true)"
+    [[ -n "${NODE_IP}" ]] || die "Could not determine the node IP from the DHCP lease; set NODE_IP to the node's address"
+    log "Detected node IP: ${NODE_IP}"
+  else
+    log "Using configured node IP: ${NODE_IP}"
+  fi
+
   CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-${NODE_IP}}"
+  log "Control-plane VIP: ${CONTROL_PLANE_VIP}"
+  log "Cluster: ${CLUSTER_NAME}; Talos: ${TALOS_VERSION}; Kubernetes: ${KUBERNETES_VERSION}"
+  log "Install disk: ${INSTALL_DISK:-automatic}; wait timeout: ${WAIT_TIMEOUT_SECONDS}s"
+  if [[ -n "${LOCAL_PATH_VERSION}" ]]; then
+    log "Local-path provisioner version: ${LOCAL_PATH_VERSION}"
+  else
+    log "Local-path provisioner version: not specified"
+  fi
 
   export CLUSTER_NAME TALOS_VERSION KUBERNETES_VERSION NODE_IP
   export CONTROL_PLANE_VIP INSTALL_DISK WAIT_TIMEOUT_SECONDS LOCAL_PATH_VERSION
