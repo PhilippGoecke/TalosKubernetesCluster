@@ -112,7 +112,6 @@ WAIT_DEADLINE=$((SECONDS + WAIT_TIMEOUT_SECONDS))
 while ! talosctl get machinestatus --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
     if (( SECONDS >= WAIT_DEADLINE )); then
         fail "Timed out after ${WAIT_TIMEOUT_SECONDS}s waiting for ${NODE_IP} to respond to the Talos API."
-    while ! talosctl version --insecure --nodes "${NODE_IP}" >/dev/null 2>&1; do
     fi
     log "   ${NODE_IP} is not ready yet; checking again..."
     sleep 2
