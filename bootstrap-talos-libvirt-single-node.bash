@@ -15,6 +15,10 @@ NODE_IP="${NODE_IP:-}"
 INSTALL_DISK="${INSTALL_DISK:-}"
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}"
 LOCAL_PATH_VERSION="${LOCAL_PATH_VERSION:-}"
+VM_MEMORY_MIB="${VM_MEMORY_MIB:-4096}"
+VM_VCPUS="${VM_VCPUS:-2}"
+VM_DISK_GIB="${VM_DISK_GIB:-20}"
+TALOS_ISO_PATH="${TALOS_ISO_PATH:-${SCRIPT_DIR}/talos-${TALOS_VERSION}-amd64.iso}"
 
 log() {
   printf '[%s] %s\n' "$(date '+%H:%M:%S')" "$*" >&2
@@ -50,16 +54,43 @@ bootstrap_libvirt() {
   log "Libvirt network is ready: ${LIBVIRT_NETWORK}"
 }
 
+ensure_virtual_machine() {
+  if virsh --connect qemu:///system dominfo "${CLUSTER_NAME}" >/dev/null 2>&1; then
+    if ! virsh --connect qemu:///system domstate "${CLUSTER_NAME}" | grep -qi '^running$'; then
+      log "Starting virtual machine: ${CLUSTER_NAME}"
+      virsh --connect qemu:///system start "${CLUSTER_NAME}" >/dev/null
+    fi
+    return
+  fi
+
+  require_command virt-install
+  [[ -f "${TALOS_ISO_PATH}" ]] || die "Talos ISO not found: ${TALOS_ISO_PATH}; set TALOS_ISO_PATH to a bootable Talos ISO"
+  log "Creating virtual machine ${CLUSTER_NAME} (${VM_VCPUS} vCPUs, ${VM_MEMORY_MIB} MiB RAM, ${VM_DISK_GIB} GiB disk)"
+  virt-install \
+    --connect qemu:///system \
+    --name "${CLUSTER_NAME}" \
+    --memory "${VM_MEMORY_MIB}" \
+    --vcpus "${VM_VCPUS}" \
+    --disk "size=${VM_DISK_GIB}" \
+    --network "network=${LIBVIRT_NETWORK}" \
+    --os-variant generic \
+    --cdrom "${TALOS_ISO_PATH}" \
+    --graphics none \
+    --noautoconsole
+}
+
 main() {
   require_command virsh
   require_command grep
+  require_command awk
   [[ -f "${CREATE_SCRIPT}" ]] || die "Single-node script not found: ${CREATE_SCRIPT}"
+
+  bootstrap_libvirt
+  ensure_virtual_machine
 
   if [[ -z "${INSTALL_DISK}" ]]; then
     INSTALL_DISK="$(virsh --connect qemu:///system domblklist --details "${CLUSTER_NAME}" 2>/dev/null | awk '$2 == "disk" && ($3 ~ /^(vd|sd|xvd)[a-z]+$/ || $3 ~ /^nvme[0-9]+n[0-9]+$/ || $3 ~ /^mmcblk[0-9]+$/) { print "/dev/" $3; exit }')" || true
   fi
-
-  bootstrap_libvirt
 
   if [[ -z "${NODE_IP}" ]]; then
     log "NODE_IP is not set; querying the DHCP lease for domain ${CLUSTER_NAME}"
