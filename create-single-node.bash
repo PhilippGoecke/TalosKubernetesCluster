@@ -16,6 +16,7 @@ CONTROL_PLANE_VIP="${CONTROL_PLANE_VIP:-${NODE_IP}}" # Kubernetes API endpoint
 INSTALL_DISK="${INSTALL_DISK:-}" # Talos installation target; prompted when not set
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-600}" # Maximum time to wait for a node to become ready
 LOCAL_PATH_VERSION="${LOCAL_PATH_VERSION:-v0.0.31}" # local-path-provisioner version
+CILIUM_VERSION="${CILIUM_VERSION:-v1.18.1}" # Cilium version
 
 CONFIG_DIR="${PWD}/talos-cluster-config-${CLUSTER_NAME}"
 
@@ -96,7 +97,7 @@ if [[ ! -f "${CONFIG_DIR}/secrets.yaml" ]]; then
         --kubernetes-version "${KUBERNETES_VERSION}" \
         --install-image "ghcr.io/siderolabs/installer:${TALOS_VERSION}" \
         --install-disk "${INSTALL_DISK}" \
-        --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true,"network":{"cni":{"name":"flannel"}},"proxy":{"disabled":false}},"machine":{"features":{"kubePrism":{"enabled":true,"port":7445}},"kubelet":{"extraMounts":[{"destination":"/var/local-path-provisioner","type":"bind","source":"/var/local-path-provisioner","options":["bind","rshared","rw"]}]}}}'
+        --config-patch-control-plane '{"cluster":{"allowSchedulingOnControlPlanes":true,"network":{"cni":{"name":"none"}},"proxy":{"disabled":false}},"machine":{"features":{"kubePrism":{"enabled":true,"port":7445}},"kubelet":{"extraMounts":[{"destination":"/var/local-path-provisioner","type":"bind","source":"/var/local-path-provisioner","options":["bind","rshared","rw"]}]}}}'
     log "✅ Base configuration generated successfully."
 else
     log "ℹ️ Base configurations already exist. Skipping generation."
@@ -119,10 +120,10 @@ done
 log "✅ Node ${NODE_IP} is ready."
 log "🛠️ Applying single-node control plane configuration..."
 log "📦 Pinning the installation image to Talos ${TALOS_VERSION} (including existing configurations)."
-log "🌐 Enabling Flannel and kube-proxy so cluster networking can become ready."
+log "🌐 Disabling the built-in CNI; Cilium will provide cluster networking."
 talosctl apply-config --insecure --nodes "${NODE_IP}" \
     --file "${CONFIG_DIR}/controlplane.yaml" \
-    --config-patch "{\"machine\":{\"install\":{\"image\":\"ghcr.io/siderolabs/installer:${TALOS_VERSION}\"}},\"cluster\":{\"allowSchedulingOnControlPlanes\":true,\"network\":{\"cni\":{\"name\":\"flannel\"}},\"proxy\":{\"disabled\":false}}}" \
+    --config-patch "{\"machine\":{\"install\":{\"image\":\"ghcr.io/siderolabs/installer:${TALOS_VERSION}\"}},\"cluster\":{\"allowSchedulingOnControlPlanes\":true,\"network\":{\"cni\":{\"name\":\"none\"}},\"proxy\":{\"disabled\":false}}}" \
     --mode=auto
 
 log "Waiting for the single-node Talos API to become reachable"
@@ -204,6 +205,12 @@ require_cmd kubectl
 log "✅ kubectl is available."
 log "🔐 Selecting the kubeconfig generated for this cluster: ${CONFIG_DIR}/kubeconfig"
 export KUBECONFIG="${CONFIG_DIR}/kubeconfig"
+log "🕸️ Installing Cilium ${CILIUM_VERSION} as the cluster CNI..."
+kubectl apply -f "https://raw.githubusercontent.com/cilium/cilium/${CILIUM_VERSION}/install/kubernetes/quick-install.yaml"
+log "⏳ Waiting for Cilium agents and operator to become ready..."
+kubectl -n kube-system rollout status daemonset/cilium --timeout="${WAIT_TIMEOUT_SECONDS}s"
+kubectl -n kube-system rollout status deployment/cilium-operator --timeout="${WAIT_TIMEOUT_SECONDS}s"
+log "✅ Cilium is ready."
 log "⏳ Waiting for all Kubernetes nodes to become Ready..."
 kubectl wait --for=condition=Ready nodes --all --timeout="${WAIT_TIMEOUT_SECONDS}s"
 log "✅ All Kubernetes nodes are Ready."
@@ -242,6 +249,7 @@ log "   CONTROL_PLANE_VIP=${CONTROL_PLANE_VIP}"
 log "   INSTALL_DISK=${INSTALL_DISK:-none}"
 log "   WAIT_TIMEOUT_SECONDS=${WAIT_TIMEOUT_SECONDS}"
 log "   LOCAL_PATH_VERSION=${LOCAL_PATH_VERSION}"
+log "   CILIUM_VERSION=${CILIUM_VERSION}"
 log "📂 Secrets and configurations saved to: ${CONFIG_DIR}"
 log "💡 To interact with your cluster, run:"
 log " export KUBECONFIG=${CONFIG_DIR}/kubeconfig"
