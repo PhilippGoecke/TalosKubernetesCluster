@@ -212,6 +212,7 @@ helm repo update cilium
 helm upgrade --install cilium cilium/cilium \
     --version "${CILIUM_VERSION#v}" \
     --namespace kube-system \
+    --set operator.replicas=1 \
     --set ipam.mode=kubernetes \
     --set cgroup.autoMount.enabled=false \
     --set cgroup.hostRoot=/sys/fs/cgroup \
