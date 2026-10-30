@@ -244,7 +244,7 @@ log "🔒 Updating the provisioner container security settings (non-root, no pri
 kubectl -n local-path-storage patch deployment local-path-provisioner --type=strategic --patch '{"spec":{"template":{"spec":{"containers":[{"name":"local-path-provisioner","securityContext":{"allowPrivilegeEscalation":false,"runAsNonRoot":true,"capabilities":{"drop":["ALL"]},"seccompProfile":{"type":"RuntimeDefault"}}}]}}}}'
 log "✅ Provisioner security settings updated."
 log "⭐ Marking the local-path StorageClass as the cluster default..."
-kubectl patch storageclass local-path --patch '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+kubectl patch storageclass local-path --type=merge --patch '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}},"spec":{"volumeBindingMode":"WaitForFirstConsumer"}}'
 log "✅ local-path StorageClass marked as default."
 log "⏳ Waiting up to 300 seconds for the provisioner deployment rollout to complete..."
 kubectl -n local-path-storage rollout status deployment/local-path-provisioner --timeout=300s
