@@ -202,11 +202,17 @@ talosctl kubeconfig "${CONFIG_DIR}/kubeconfig" --talosconfig "${CONFIG_DIR}/talo
 log "💾 Enabling local storage (local-path-provisioner ${LOCAL_PATH_VERSION})..."
 log "🔎 Checking that kubectl is available before configuring Kubernetes resources..."
 require_cmd kubectl
+require_cmd helm
 log "✅ kubectl is available."
 log "🔐 Selecting the kubeconfig generated for this cluster: ${CONFIG_DIR}/kubeconfig"
 export KUBECONFIG="${CONFIG_DIR}/kubeconfig"
 log "🕸️ Installing Cilium ${CILIUM_VERSION} as the cluster CNI..."
-kubectl apply -f "https://raw.githubusercontent.com/cilium/cilium/${CILIUM_VERSION}/install/kubernetes/quick-install.yaml"
+helm repo add cilium https://helm.cilium.io/ --force-update
+helm repo update cilium
+helm upgrade --install cilium cilium/cilium \
+    --version "${CILIUM_VERSION#v}" \
+    --namespace kube-system \
+    --set ipam.mode=kubernetes
 log "⏳ Waiting for Cilium agents and operator to become ready..."
 kubectl -n kube-system rollout status daemonset/cilium --timeout="${WAIT_TIMEOUT_SECONDS}s"
 kubectl -n kube-system rollout status deployment/cilium-operator --timeout="${WAIT_TIMEOUT_SECONDS}s"
