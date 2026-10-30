@@ -212,7 +212,11 @@ helm repo update cilium
 helm upgrade --install cilium cilium/cilium \
     --version "${CILIUM_VERSION#v}" \
     --namespace kube-system \
-    --set ipam.mode=kubernetes
+    --set ipam.mode=kubernetes \
+    --set cgroup.autoMount.enabled=false \
+    --set cgroup.hostRoot=/sys/fs/cgroup \
+    --set 'securityContext.capabilities.ciliumAgent={CHOWN,KILL,NET_ADMIN,NET_RAW,IPC_LOCK,SYS_ADMIN,SYS_RESOURCE,DAC_OVERRIDE,FOWNER,SETGID,SETUID}' \
+    --set 'securityContext.capabilities.cleanCiliumState={NET_ADMIN,SYS_ADMIN,SYS_RESOURCE}'
 log "⏳ Waiting for Cilium agents and operator to become ready..."
 kubectl -n kube-system rollout status daemonset/cilium --timeout="${WAIT_TIMEOUT_SECONDS}s"
 kubectl -n kube-system rollout status deployment/cilium-operator --timeout="${WAIT_TIMEOUT_SECONDS}s"
