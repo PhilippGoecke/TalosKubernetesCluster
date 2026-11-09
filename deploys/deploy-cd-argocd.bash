@@ -7,7 +7,7 @@ set -euo pipefail
 NAMESPACE="argocd"
 # Optionale Version (Standard: latest stable). Für eine feste Version z.B. "v2.10.4" eintragen.
 ARGOCD_VERSION="stable" 
-MANIFEST_URL="https://githubusercontent.com{ARGOCD_VERSION}/manifests/install.yaml"
+MANIFEST_URL="https://raw.githubusercontent.com/argoproj/argo-cd/{ARGOCD_VERSION}/manifests/install.yaml"
 
 # --- HELPER FUNCTIONS ---
 log() {
@@ -39,7 +39,7 @@ kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply
 
 log "Lade ArgoCD Manifeste (${ARGOCD_VERSION}) und installiere Komponenten..."
 # --server-side wird empfohlen, um Limitierungen der Annotation-Größe bei großen CRDs zu umgehen
-kubectl apply -n "${NAMESPACE}" -f "${MANIFEST_URL}" --server-side
+kubectl apply -n "${NAMESPACE}" --server-side --force-conflicts -f "${MANIFEST_URL}"
 
 log "Warte darauf, dass die ArgoCD Deployments einsatzbereit sind..."
 kubectl rollout status deployment/argocd-server -n "${NAMESPACE}" --timeout=300s
