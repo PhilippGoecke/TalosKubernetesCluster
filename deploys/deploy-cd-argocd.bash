@@ -7,7 +7,7 @@ set -euo pipefail
 NAMESPACE="argocd"
 # Optionale Version (Standard: latest stable). Für eine feste Version z.B. "v2.10.4" eintragen.
 ARGOCD_VERSION="stable" 
-MANIFEST_URL="https://raw.githubusercontent.com/argoproj/argo-cd/{ARGOCD_VERSION}/manifests/install.yaml"
+MANIFEST_URL="https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
 
 # --- HELPER FUNCTIONS ---
 log() {
